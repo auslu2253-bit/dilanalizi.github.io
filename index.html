@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="./css/style.css">
   <!-- Chart.js UMD -->
   <script src="./vendor/chart.umd.min.js"></script>
+  <!-- PDF.js UMD -->
+  <script src="./vendor/pdf.min.js"></script>
 </head>
 
 <body>
@@ -156,9 +158,9 @@
             <option value="bilingual">3. İki Dilli Çocuk (29 İfade, [L2] Kod Değiştirme)</option>
           </select>
 
-          <label for="file-upload" class="btn btn-secondary" title=".txt transkript dosyası yükle">
-            <input type="file" id="file-upload" accept=".txt" style="display: none;">
-            .txt Yükle
+          <label for="file-upload" class="btn btn-secondary" title=".txt veya .pdf transkript dosyası yükle">
+            <input type="file" id="file-upload" accept=".txt,.pdf" style="display: none;">
+            Dosya Yükle (.txt / .pdf)
           </label>
         </div>
 
@@ -191,11 +193,12 @@
       <section class="panel-card" id="audio-recorder-section" aria-labelledby="recorder-title">
         <h3 id="recorder-title">
           <span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="23"/>
-              <line x1="8" y1="23" x2="16" y2="23"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              style="vertical-align: middle; margin-right: 4px;">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
             </svg>
             3. Ses Kaydı &amp; Canlı Dikte
           </span>
@@ -230,7 +233,8 @@
             <small class="text-muted">(Değiştirmek için: <code>Tab</code> veya <code>Space</code>)</small>
           </div>
           <div class="speaker-btn-group" role="radiogroup" aria-label="Aktif Konuşmacı">
-            <button type="button" id="btn-speaker-child" class="btn speaker-btn active-child" role="radio" aria-checked="true">
+            <button type="button" id="btn-speaker-child" class="btn speaker-btn active-child" role="radio"
+              aria-checked="true">
               👶 Çocuk (Ç:)
             </button>
             <button type="button" id="btn-speaker-therapist" class="btn speaker-btn" role="radio" aria-checked="false">
@@ -244,11 +248,13 @@
           <label class="dictation-consent-label">
             <input type="checkbox" id="dictation-consent-checkbox">
             <span>
-              Bu özellik sesi tarayıcı sağlayıcısının (Chrome için Google) sunucularına gönderebilir; çocuk ses verisi için KVKK açısından onay verdiğimi kabul ediyorum.
+              Bu özellik sesi tarayıcı sağlayıcısının (Chrome için Google) sunucularına gönderebilir; çocuk ses verisi
+              için KVKK açısından onay verdiğimi kabul ediyorum.
             </span>
           </label>
           <div class="dictation-actions">
-            <button type="button" id="btn-toggle-dictation" class="btn btn-sm btn-secondary" disabled title="Önce yukarıdaki KVKK onay kutusunu işaretleyiniz">
+            <button type="button" id="btn-toggle-dictation" class="btn btn-sm btn-secondary" disabled
+              title="Önce yukarıdaki KVKK onay kutusunu işaretleyiniz">
               🎙️ Canlı Dikteyi Aç (tr-TR)
             </button>
             <span id="dictation-status-indicator" class="dictation-status-text">Dikte kapalı</span>
@@ -263,7 +269,8 @@
         <div class="correction-alert">
           <div class="alert-icon">ℹ️</div>
           <div class="alert-text">
-            <strong>Düzeltme Hatırlatması:</strong> Otomatik transkript taslaktır, dinleyerek düzeltin; aksi halde morfolojik hatalar ve labirentler tanıma motoru tarafından silinebilir.
+            <strong>Düzeltme Hatırlatması:</strong> Otomatik transkript taslaktır, dinleyerek düzeltin; aksi halde
+            morfolojik hatalar ve labirentler tanıma motoru tarafından silinebilir.
           </div>
         </div>
 
@@ -278,7 +285,8 @@
             <a id="btn-download-audio" class="btn btn-sm btn-secondary" download="dil-kaydi.webm">
               💾 Sesi İndir (.webm/.mp4)
             </a>
-            <button type="button" id="btn-whisper-transcribe" class="btn btn-sm btn-primary" title="Transformers.js ile tamamen yerel çevrimdışı transkripsiyon">
+            <button type="button" id="btn-whisper-transcribe" class="btn btn-sm btn-primary"
+              title="Transformers.js ile tamamen yerel çevrimdışı transkripsiyon">
               🤖 Cihazda Yazıya Dök (Whisper)
             </button>
           </div>

@@ -74,7 +74,9 @@ Dil Analizi/
 │   ├── roots.js              # ~500 en sık Türkçe çocuk dili kök sözlüğü
 │   └── examples.js           # 3 örnek transkript (Anlatı, Sohbet, İki Dilli)
 └── vendor/
-    └── chart.umd.min.js      # Chart.js yerel UMD kütüphanesi
+    ├── chart.umd.min.js      # Chart.js yerel UMD kütüphanesi
+    ├── pdf.min.js            # PDF.js istemci taraflı PDF okuyucu
+    └── pdf.worker.min.js     # PDF.js Web Worker betiği
 ```
 
 ---

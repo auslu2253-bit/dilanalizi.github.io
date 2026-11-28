@@ -123,11 +123,32 @@ class App {
       if (val) this.loadExample(val);
     });
 
-    // .txt Dosya Yükle
-    document.getElementById("file-upload")?.addEventListener("change", (e) => {
+    // Dosya Yükle (.txt veya .pdf)
+    const fileInput = document.getElementById("file-upload");
+    fileInput?.addEventListener("change", (e) => {
       const file = e.target.files[0];
-      if (file) this.handleFileUpload(file);
+      if (file) {
+        this.handleFileUpload(file);
+        e.target.value = ""; // Aynı dosyanın tekrar seçilmesine olanak tanı
+      }
     });
+
+    // Transkript alanına sürükle-bırak desteği (.txt ve .pdf)
+    if (textarea) {
+      textarea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        textarea.classList.add("drag-over");
+      });
+      textarea.addEventListener("dragleave", () => {
+        textarea.classList.remove("drag-over");
+      });
+      textarea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        textarea.classList.remove("drag-over");
+        const file = e.dataTransfer?.files?.[0];
+        if (file) this.handleFileUpload(file);
+      });
+    }
 
     // Analiz Et düğmesi
     document.getElementById("btn-analyze")?.addEventListener("click", () => {
@@ -593,26 +614,95 @@ class App {
   }
 
   /**
-   * .txt Dosyası Okuma
+   * Dosya Okuma (.txt ve .pdf)
    */
-  handleFileUpload(file) {
-    if (!file.name.endsWith(".txt")) {
-      this.ui.showToast("Lütfen sadece .txt uzantılı transkript dosyası seçiniz.", "warning");
+  async handleFileUpload(file) {
+    const fileNameLower = file.name.toLowerCase();
+    const isTxt = fileNameLower.endsWith(".txt");
+    const isPdf = fileNameLower.endsWith(".pdf");
+
+    if (!isTxt && !isPdf) {
+      this.ui.showToast("Lütfen sadece .txt veya .pdf uzantılı transkript dosyası seçiniz.", "warning");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      document.getElementById("transcript-input").value = content;
-      this.updateUtteranceCount();
-      this.runAnalysis();
-      this.ui.showToast(`'${file.name}' dosyası yüklendi ve analiz edildi.`, "success");
-    };
-    reader.onerror = () => {
-      this.ui.showToast("Dosya okunamadı.", "danger");
-    };
-    reader.readAsText(file, "UTF-8");
+    if (isTxt) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        document.getElementById("transcript-input").value = content;
+        this.updateUtteranceCount();
+        this.runAnalysis();
+        this.ui.showToast(`'${file.name}' dosyası yüklendi ve analiz edildi.`, "success");
+      };
+      reader.onerror = () => {
+        this.ui.showToast("Dosya okunamadı.", "danger");
+      };
+      reader.readAsText(file, "UTF-8");
+    } else if (isPdf) {
+      try {
+        this.ui.showToast(`'${file.name}' PDF içeriği okunuyor...`, "info");
+        const arrayBuffer = await file.arrayBuffer();
+        const extractedText = await this.extractTextFromPDF(arrayBuffer);
+
+        if (!extractedText || !extractedText.trim()) {
+          this.ui.showToast("PDF dosyasında metin bulunamadı. (Taranmış görsel PDF'ler yerine metin içeren PDF yükleyiniz)", "warning");
+          return;
+        }
+
+        document.getElementById("transcript-input").value = extractedText.trim();
+        this.updateUtteranceCount();
+        this.runAnalysis();
+        this.ui.showToast(`'${file.name}' PDF transkripti başarıyla yüklendi ve analiz edildi.`, "success");
+      } catch (err) {
+        console.error("PDF okuma hatası:", err);
+        this.ui.showToast("PDF dosyası okunamadı: " + (err.message || err), "danger");
+      }
+    }
+  }
+
+  /**
+   * PDF.js ile İstemci Tarafında PDF Metin Çıkarma
+   */
+  async extractTextFromPDF(arrayBuffer) {
+    if (!window.pdfjsLib) {
+      throw new Error("PDF.js kütüphanesi yüklenemedi.");
+    }
+
+    // Worker yolunu yerel vendor kopyasına yönlendir
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.js";
+
+    const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    let fullText = "";
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      let lastY = null;
+      let pageText = "";
+
+      for (const item of textContent.items) {
+        if (!item.str) continue;
+
+        // Y eksenindeki belirgin değişimlerde yeni satıra geç (satır bütünlüğünü korur)
+        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+          pageText += "\n";
+        } else if (pageText.length > 0 && !pageText.endsWith("\n") && !pageText.endsWith(" ")) {
+          pageText += " ";
+        }
+
+        pageText += item.str;
+        lastY = item.transform[5];
+      }
+
+      if (pageText.trim()) {
+        fullText += pageText.trim() + "\n";
+      }
+    }
+
+    return fullText.trim();
   }
 
   /**

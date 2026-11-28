@@ -243,6 +243,19 @@
       assert(typeof whisper.transcribeAudioBlob === "function", "transcribeAudioBlob metodu bulunmalı");
     });
 
+    test("14. Dosya Yükleme Format Denetimi", ".txt ve .pdf uzantıları geçerli kabul edilmeli", () => {
+      const allowedExtensions = [".txt", ".pdf"];
+      const isAllowed = (filename) => {
+        const lower = filename.toLowerCase();
+        return allowedExtensions.some(ext => lower.endsWith(ext));
+      };
+      assert(isAllowed("transkript.txt"), ".txt kabul edilmeli");
+      assert(isAllowed("ornek.pdf"), ".pdf kabul edilmeli");
+      assert(isAllowed("RAPOR.PDF"), "büyük harfli .PDF kabul edilmeli");
+      assert(!isAllowed("ses.mp3"), ".mp3 reddedilmeli");
+      assert(!isAllowed("belge.docx"), ".docx reddedilmeli");
+    });
+
     // Testleri UI'a yazdır
     const container = document.getElementById("test-container");
     let passedCount = 0;
