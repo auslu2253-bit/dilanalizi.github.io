@@ -486,44 +486,16 @@ class App {
       }
     });
 
-    // 5. Kaydedilen Sesi .txt Olarak İndir Düğmesi
+    // 5. Kaydedilen Ses Dosyasını Doğrudan .txt Olarak İndir
     const btnDownloadAudioTxt = document.getElementById("btn-download-audio-txt");
-    btnDownloadAudioTxt?.addEventListener("click", async () => {
-      let currentText = document.getElementById("transcript-input")?.value?.trim() || "";
+    btnDownloadAudioTxt?.addEventListener("click", () => {
+      this.downloadAudioAsTxt();
+    });
 
-      // Eğer henüz transkript metni yoksa fakat ses kaydı alınmışsa, Whisper ile otomatik yazıya dök
-      if (!currentText && this.voiceRecorder?.audioBlob) {
-        this.ui.showToast("Ses kaydı önce yazıya dökülüyor...", "info");
-        try {
-          const text = await this.transcribeWithWhisper();
-          if (text && text.trim()) {
-            const formatted = `Ç: ${text.trim()}`;
-            const textarea = document.getElementById("transcript-input");
-            if (textarea) {
-              textarea.value = formatted;
-              this.updateUtteranceCount();
-              this.saveInputsToStorage();
-            }
-            currentText = formatted;
-          }
-        } catch (err) {
-          console.error("Whisper hatası:", err);
-          this.ui.showToast("Ses yazıya dökülemedi: " + (err.message || err), "danger");
-          return;
-        }
-      }
-
-      if (!currentText) {
-        this.ui.showToast("İndirilecek transkript metni veya ses kaydı bulunamadı.", "warning");
-        return;
-      }
-
-      const clientCode = document.getElementById("client-code")?.value || "Danisan";
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const filename = `${clientCode}-ses-transkript-${dateStr}.txt`;
-
-      this.downloadTxt(currentText, filename);
-      this.ui.showToast(`'${filename}' olarak indirildi.`, "success");
+    // 6. Kaydedilen Sesi Base64 Metin (.txt) Olarak İndir
+    const btnDownloadAudioBase64 = document.getElementById("btn-download-audio-base64");
+    btnDownloadAudioBase64?.addEventListener("click", () => {
+      this.downloadAudioAsBase64Txt();
     });
   }
 
@@ -1560,6 +1532,66 @@ class App {
     a.click();
     URL.revokeObjectURL(url);
     this.ui.showToast("CSV metrik tablosu indirildi.", "success");
+  }
+
+  /**
+   * Kaydedilen Ses Dosyasını (Binary Audio Blob) Doğrudan .txt Uzantısıyla İndir
+   */
+  downloadAudioAsTxt() {
+    if (!this.voiceRecorder || !this.voiceRecorder.audioBlob) {
+      this.ui.showToast("Önce bir ses kaydı yapmalısınız.", "warning");
+      return;
+    }
+
+    const audioBlob = this.voiceRecorder.audioBlob;
+    const clientCode = document.getElementById("client-code")?.value || "Danisan";
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `${clientCode}-ses-kaydi-${dateStr}.txt`;
+
+    // Ses dosyasını .txt MIME türü ve .txt uzantısıyla doğrudan indir
+    const txtBlob = new Blob([audioBlob], { type: "text/plain;charset=x-user-defined" });
+    const url = URL.createObjectURL(txtBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    this.ui.showToast(`Ses dosyası '${filename}' olarak indirildi.`, "success");
+  }
+
+  /**
+   * Kaydedilen Sesi Base64 Kodlu Metin (.txt) Olarak İndir
+   */
+  downloadAudioAsBase64Txt() {
+    if (!this.voiceRecorder || !this.voiceRecorder.audioBlob) {
+      this.ui.showToast("Önce bir ses kaydı yapmalısınız.", "warning");
+      return;
+    }
+
+    const audioBlob = this.voiceRecorder.audioBlob;
+    const clientCode = document.getElementById("client-code")?.value || "Danisan";
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `${clientCode}-ses-base64-${dateStr}.txt`;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Data = reader.result;
+      const blob = new Blob([base64Data], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      this.ui.showToast(`Ses Base64 verisi '${filename}' olarak indirildi.`, "success");
+    };
+    reader.readAsDataURL(audioBlob);
   }
 
   /**
