@@ -366,11 +366,172 @@ body {
 /* Transkript Alanı */
 .transcript-textarea {
   width: 100%;
-  height: 240px;
+  height: 200px;
   font-family: var(--font-mono);
   font-size: 0.84rem;
   line-height: 1.5;
   resize: vertical;
+}
+
+/* Canlı Ses Kaydedici & Analiz Modülü */
+.voice-recorder-widget {
+  background: linear-gradient(135deg, var(--bg-surface), var(--bg-surface-alt));
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.voice-recorder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.recorder-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recording-timer {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.recording-timer.timer-active {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background-color: var(--danger-bg);
+  animation: pulse-recording 1.2s infinite;
+}
+
+.recorder-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-record {
+  flex: 1;
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+}
+
+.btn-record:hover {
+  background-color: var(--primary-hover);
+}
+
+.record-icon-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  display: inline-block;
+}
+
+.btn-record.recording-active {
+  background-color: var(--danger);
+  border-color: var(--danger);
+  animation: pulse-recording 1.2s infinite;
+}
+
+.btn-record.recording-active .record-icon-circle {
+  background-color: #ffffff;
+  animation: blink-dot 0.8s infinite;
+}
+
+@keyframes blink-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.speaker-select-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.speaker-select-group select {
+  padding: 6px 8px;
+  font-size: 0.82rem;
+}
+
+.visualizer-container {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.visualizer-container canvas {
+  width: 100%;
+  height: 36px;
+  display: block;
+}
+
+.interim-preview {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--primary);
+  margin-top: 6px;
+  min-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audio-player-container {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.audio-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.auto-analyze-toggle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auto-analyze-toggle label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .transcript-actions {

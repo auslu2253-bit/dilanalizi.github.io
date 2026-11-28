@@ -16,7 +16,17 @@ class App {
     this.ui = new UIController();
     this.qualitativeEngine = new QualitativeAnalysisEngine();
     this.lastAnalysisResult = null;
+
+    // Ses Kayıt & Tanıma Durumu
     this.speechRecognition = null;
+    this.mediaRecorder = null;
+    this.audioChunks = [];
+    this.audioStream = null;
+    this.audioContext = null;
+    this.analyser = null;
+    this.animFrameId = null;
+    this.recordingStartTime = null;
+    this.recordingTimerId = null;
     this.isRecording = false;
 
     this.init();
@@ -25,7 +35,7 @@ class App {
   init() {
     this.initTheme();
     this.initEventListeners();
-    this.initSpeechRecognition();
+    this.initVoiceRecorder();
     this.initRouting();
     this.loadInitialInputs();
     this.updateContextWarning();
@@ -216,91 +226,309 @@ class App {
   }
 
   /**
-   * Web Speech API (tr-TR) Dikte Entegrasyonu
+   * Canlı Ses Kaydedici & Anlık Analiz Modülü (MediaRecorder + Web Speech API)
    */
-  initSpeechRecognition() {
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const btn = document.getElementById("btn-dictate");
-    if (!SpeechRec) {
-      if (btn) {
-        btn.title = "Tarayıcınız Web Speech API canlı dikteyi desteklememektedir.";
-        btn.classList.add("disabled");
-        btn.addEventListener("click", () => {
-          alert("Tarayıcınız canlı ses diktesini desteklememektedir. Ses kaydınızı harici bir konuşma tanıma aracıyla yazıya döküp .txt olarak yükleyebilirsiniz.");
-        });
+  initVoiceRecorder() {
+    const recordBtn = document.getElementById("btn-toggle-record");
+    if (!recordBtn) return;
+
+    recordBtn.addEventListener("click", () => {
+      if (this.isRecording) {
+        this.stopVoiceRecording();
+      } else {
+        this.startVoiceRecording();
       }
+    });
+
+    // Web Speech API desteğini kontrol et
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+      this.speechRecognition = new SpeechRec();
+      this.speechRecognition.lang = "tr-TR";
+      this.speechRecognition.continuous = true;
+      this.speechRecognition.interimResults = true;
+
+      this.speechRecognition.onresult = (event) => {
+        let interimText = "";
+        let finalText = "";
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const trans = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += trans.trim() + " ";
+          } else {
+            interimText += trans.trim() + " ";
+          }
+        }
+
+        const previewEl = document.getElementById("interim-speech-preview");
+        if (previewEl) {
+          previewEl.textContent = interimText ? `Dinleniyor: "${interimText}"` : "Konuşmanız dinleniyor...";
+        }
+
+        if (finalText.trim()) {
+          this.appendTranscribedLine(finalText.trim());
+        }
+      };
+
+      this.speechRecognition.onerror = (e) => {
+        console.warn("Konuşma tanıma hatası:", e.error);
+        const previewEl = document.getElementById("interim-speech-preview");
+        if (previewEl) {
+          previewEl.textContent = `Ses algılama: ${e.error === "no-speech" ? "ses bekleniyor..." : e.error}`;
+        }
+      };
+
+      this.speechRecognition.onend = () => {
+        if (this.isRecording) {
+          // Devam eden kayıtta otomatik yeniden başlat
+          try {
+            this.speechRecognition.start();
+          } catch (e) {}
+        }
+      };
+    }
+  }
+
+  /**
+   * Ses Kaydını ve Canlı Transkripsiyonu Başlat
+   */
+  async startVoiceRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Tarayıcınız mikrofon erişimini (MediaDevices API) desteklememektedir.");
       return;
     }
 
-    this.speechRecognition = new SpeechRec();
-    this.speechRecognition.lang = "tr-TR";
-    this.speechRecognition.continuous = true;
-    this.speechRecognition.interimResults = false;
-
-    this.speechRecognition.onresult = (event) => {
-      let recognized = "";
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          recognized += event.results[i][0].transcript.trim() + " ";
-        }
-      }
-
-      if (recognized.trim()) {
-        const textarea = document.getElementById("transcript-input");
-        const currentVal = textarea.value.trim();
-        const prefix = currentVal.length > 0 ? "\n" : "";
-        textarea.value = currentVal + prefix + `Ç: ${recognized.trim()}`;
-        this.updateUtteranceCount();
-      }
-    };
-
-    this.speechRecognition.onerror = (e) => {
-      console.warn("Konuşma tanıma hatası:", e);
-      this.stopDictation();
-      this.ui.showToast(`Dikte hatası: ${e.error || "bilinmeyen hata"}`, "warning");
-    };
-
-    this.speechRecognition.onend = () => {
-      this.stopDictation();
-    };
-
-    if (btn) {
-      btn.addEventListener("click", () => {
-        if (this.isRecording) {
-          this.stopDictation();
-        } else {
-          this.startDictation();
-        }
-      });
-    }
-  }
-
-  startDictation() {
-    if (!this.speechRecognition) return;
     try {
-      this.speechRecognition.start();
-      this.isRecording = true;
-      const btn = document.getElementById("btn-dictate");
-      if (btn) {
-        btn.classList.add("recording");
-        btn.innerHTML = `<span class="rec-dot"></span> Dinleniyor... (Durdur)`;
-      }
-      this.ui.showToast("Canlı ses diktesi başladı (tr-TR). Konuşun...", "info");
+      this.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      console.error("Mikrofon erişim hatası:", err);
+      this.ui.showToast("Mikrofon izni verilemedi. Lütfen tarayıcı ayarlarından mikrofona izin veriniz.", "danger");
+      return;
+    }
+
+    this.isRecording = true;
+    this.audioChunks = [];
+
+    // 1. MediaRecorder başlat (Ses Dosyası Kaydı)
+    try {
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : (MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "");
+      this.mediaRecorder = mime ? new MediaRecorder(this.audioStream, { mimeType: mime }) : new MediaRecorder(this.audioStream);
+
+      this.mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          this.audioChunks.push(e.data);
+        }
+      };
+
+      this.mediaRecorder.onstop = () => {
+        this.finalizeAudioPlayback();
+      };
+
+      this.mediaRecorder.start(250); // 250ms dilimler
     } catch (e) {
-      console.error(e);
+      console.warn("MediaRecorder başlatılamadı:", e);
+    }
+
+    // 2. Web Speech API başlat (Konuşmayı Metne Çevirme)
+    if (this.speechRecognition) {
+      try {
+        this.speechRecognition.start();
+      } catch (e) {
+        console.warn("Speech recognition başlatma hatası:", e);
+      }
+    } else {
+      this.ui.showToast("Ses kaydediliyor (Otomatik metne döküm için Chrome/Edge önerilir).", "info");
+    }
+
+    // 3. AudioContext ve Canlı Dalga Çizici (Visualizer)
+    this.initAudioVisualizer(this.audioStream);
+
+    // 4. Arayüz Güncelleme
+    const recordBtn = document.getElementById("btn-toggle-record");
+    const btnText = document.getElementById("record-btn-text");
+    const timerEl = document.getElementById("recording-timer");
+    const visContainer = document.getElementById("visualizer-container");
+    const playerContainer = document.getElementById("audio-player-container");
+
+    if (recordBtn) recordBtn.classList.add("recording-active");
+    if (btnText) btnText.textContent = "Kaydı Durdur & Analiz Et";
+    if (timerEl) timerEl.classList.add("timer-active");
+    if (visContainer) visContainer.style.display = "block";
+    if (playerContainer) playerContainer.style.display = "none";
+
+    // Süre Sayacı
+    this.recordingStartTime = Date.now();
+    this.recordingTimerId = setInterval(() => {
+      const elapsedSec = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, "0");
+      const secs = String(elapsedSec % 60).padStart(2, "0");
+      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+
+    this.ui.showToast("Ses kaydediliyor... Konuştuğunuzda transkript dökülecek ve anlık analiz edilecek.", "info");
+  }
+
+  /**
+   * Ses Kaydını Durdur ve Otomatik Analiz Et
+   */
+  stopVoiceRecording() {
+    this.isRecording = false;
+
+    // 1. MediaRecorder durdur
+    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+      try {
+        this.mediaRecorder.stop();
+      } catch (e) {}
+    }
+
+    // 2. SpeechRecognition durdur
+    if (this.speechRecognition) {
+      try {
+        this.speechRecognition.stop();
+      } catch (e) {}
+    }
+
+    // 3. Mikrofon akışını durdur
+    if (this.audioStream) {
+      this.audioStream.getTracks().forEach(t => t.stop());
+      this.audioStream = null;
+    }
+
+    // 4. Timer ve Görselleştiriciyi temizle
+    if (this.recordingTimerId) {
+      clearInterval(this.recordingTimerId);
+      this.recordingTimerId = null;
+    }
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
+    if (this.audioContext && this.audioContext.state !== "closed") {
+      try { this.audioContext.close(); } catch (e) {}
+      this.audioContext = null;
+    }
+
+    // 5. Arayüzü Sıfırla
+    const recordBtn = document.getElementById("btn-toggle-record");
+    const btnText = document.getElementById("record-btn-text");
+    const timerEl = document.getElementById("recording-timer");
+    const visContainer = document.getElementById("visualizer-container");
+
+    if (recordBtn) recordBtn.classList.remove("recording-active");
+    if (btnText) btnText.textContent = "Kaydı Başlat & Konuş";
+    if (timerEl) timerEl.classList.remove("timer-active");
+    if (visContainer) visContainer.style.display = "none";
+
+    // 6. Otomatik Analiz Tetikle
+    const autoAnalyze = document.getElementById("auto-analyze-checkbox")?.checked ?? true;
+    if (autoAnalyze) {
+      setTimeout(() => {
+        this.runAnalysis();
+        this.ui.switchTab("ozet");
+        this.ui.showToast("Ses kaydedildi ve transkript başarıyla analiz edildi!", "success");
+      }, 300);
     }
   }
 
-  stopDictation() {
-    if (!this.speechRecognition) return;
-    this.isRecording = false;
-    try {
-      this.speechRecognition.stop();
-    } catch (e) {}
-    const btn = document.getElementById("btn-dictate");
-    if (btn) {
-      btn.classList.remove("recording");
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Canlı Dikte`;
+  /**
+   * Ses Çalma Çubuğunu Oluştur
+   */
+  finalizeAudioPlayback() {
+    if (this.audioChunks.length === 0) return;
+
+    const blob = new Blob(this.audioChunks, { type: "audio/webm" });
+    const audioUrl = URL.createObjectURL(blob);
+
+    const playerContainer = document.getElementById("audio-player-container");
+    const audioElement = document.getElementById("recorded-audio");
+    const downloadBtn = document.getElementById("btn-download-audio");
+
+    if (audioElement) {
+      audioElement.src = audioUrl;
+    }
+    if (downloadBtn) {
+      downloadBtn.href = audioUrl;
+    }
+    if (playerContainer) {
+      playerContainer.style.display = "block";
+    }
+  }
+
+  /**
+   * Canlı Ses Dalgası (Canvas Visualizer)
+   */
+  initAudioVisualizer(stream) {
+    const canvas = document.getElementById("audio-visualizer");
+    if (!canvas) return;
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    this.audioContext = new AudioCtx();
+    const source = this.audioContext.createMediaStreamSource(stream);
+    this.analyser = this.audioContext.createAnalyser();
+    this.analyser.fftSize = 64;
+    source.connect(this.analyser);
+
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const ctx = canvas.getContext("2d");
+
+    const draw = () => {
+      if (!this.isRecording) return;
+      this.animFrameId = requestAnimationFrame(draw);
+
+      this.analyser.getByteFrequencyData(dataArray);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const barWidth = (canvas.width / bufferLength) * 1.8;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * canvas.height;
+        ctx.fillStyle = `rgb(${49 + barHeight * 2}, ${151 + barHeight}, ${149})`;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        x += barWidth + 2;
+      }
+    };
+
+    draw();
+  }
+
+  /**
+   * Tanınan Cümleyi Transkripte Ekle
+   */
+  appendTranscribedLine(sentence) {
+    const textarea = document.getElementById("transcript-input");
+    if (!textarea) return;
+
+    const speaker = document.getElementById("record-speaker-select")?.value || "Ç";
+
+    // Zaman damgası üret (kayıt süresine göre)
+    let tsPrefix = "";
+    if (this.recordingStartTime) {
+      const elapsedSec = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, "0");
+      const secs = String(elapsedSec % 60).padStart(2, "0");
+      tsPrefix = `[${mins}:${secs}] `;
+    }
+
+    const currentVal = textarea.value.trim();
+    const newLine = `${tsPrefix}${speaker}: ${sentence}`;
+    textarea.value = currentVal ? `${currentVal}\n${newLine}` : newLine;
+
+    this.updateUtteranceCount();
+    this.saveInputsToStorage();
+
+    // Süre alanını otomatik güncelle (isteğe bağlı)
+    if (this.recordingStartTime) {
+      const elapsedMins = Math.max(1, Math.round(((Date.now() - this.recordingStartTime) / 60000) * 10) / 10);
+      const durationInput = document.getElementById("sample-duration");
+      if (durationInput) durationInput.value = elapsedMins;
     }
   }
 

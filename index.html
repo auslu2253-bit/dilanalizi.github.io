@@ -137,6 +137,54 @@
           <span id="live-utterance-badge" class="badge badge-secondary">0 Çocuk İfadesi</span>
         </h3>
 
+        <!-- CANLI SES KAYDEDİCİ VE ANLIK ANALİZ WIDGETI -->
+        <div class="voice-recorder-widget" id="voice-recorder-box">
+          <div class="voice-recorder-header">
+            <span class="recorder-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              Canlı Ses Kaydedici &amp; Anlık Analiz
+            </span>
+            <span id="recording-timer" class="recording-timer">00:00</span>
+          </div>
+
+          <div class="recorder-controls-row">
+            <button type="button" id="btn-toggle-record" class="btn btn-record" title="Konuşmaya başlayın; ses kaydedilir ve transkript otomatik dökülür">
+              <span class="record-icon-circle"></span>
+              <span id="record-btn-text">Kaydı Başlat &amp; Konuş</span>
+            </button>
+
+            <div class="speaker-select-group">
+              <label for="record-speaker-select">Konuşmacı:</label>
+              <select id="record-speaker-select" class="form-control">
+                <option value="Ç" selected>Ç: Çocuk</option>
+                <option value="T">T: Terapist</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Canlı Ses Dalgası / Seviye Göstergesi -->
+          <div id="visualizer-container" class="visualizer-container" style="display: none;">
+            <canvas id="audio-visualizer" width="340" height="36"></canvas>
+            <div id="interim-speech-preview" class="interim-preview">Mikrofon dinleniyor...</div>
+          </div>
+
+          <!-- Kayıt Tamamlandığında Ses Çalar -->
+          <div id="audio-player-container" class="audio-player-container" style="display: none;">
+            <audio id="recorded-audio" controls style="width: 100%; height: 36px;"></audio>
+            <div class="audio-actions">
+              <a id="btn-download-audio" class="btn btn-sm btn-secondary" download="dil-analizi-ses-kaydi.webm">Sesi İndir (.webm)</a>
+              <span class="text-muted" style="font-size: 0.75rem;">Ses güvenle yerel bellektedir.</span>
+            </div>
+          </div>
+
+          <div class="auto-analyze-toggle">
+            <label>
+              <input type="checkbox" id="auto-analyze-checkbox" checked>
+              Kayıt durduğunda transkripti otomatik analiz et
+            </label>
+          </div>
+        </div>
+
         <div class="transcript-actions">
           <select id="example-select" class="form-control" style="flex: 1;" aria-label="Örnek Transkript Seç">
             <option value="">-- Hazır Örnek Yükle --</option>
@@ -149,11 +197,6 @@
             <input type="file" id="file-upload" accept=".txt" style="display: none;">
             .txt Yükle
           </label>
-
-          <button type="button" id="btn-dictate" class="btn btn-secondary" title="Web Speech API ile canlı Türkçe dikte">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            Canlı Dikte
-          </button>
         </div>
 
         <details class="syntax-helper">
