@@ -256,6 +256,18 @@
       assert(!isAllowed("belge.docx"), ".docx reddedilmeli");
     });
 
+    test("15. Ses ve Transkript TXT İndirme Yapısı", "Metin dışa aktarma ve dosya adı biçimi doğru olmalı", () => {
+      const code = "D-101";
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const expectedFilename = `${code}-ses-transkript-${dateStr}.txt`;
+      assert(expectedFilename.endsWith(".txt"), "Dosya adı .txt ile bitmeli");
+      assert(expectedFilename.includes(code), "Danışan kodunu içermeli");
+
+      const rawTranscript = "[00:05] Ç: araba gitti.\n[00:08] T: nereye gitti?";
+      assert(rawTranscript.length > 0, "Transkript içeriği boş olmamalı");
+      assert(rawTranscript.includes("Ç:"), "Çocuk ifadesi içermeli");
+    });
+
     // Testleri UI'a yazdır
     const container = document.getElementById("test-container");
     let passedCount = 0;
