@@ -366,83 +366,70 @@ body {
 /* Transkript Alanı */
 .transcript-textarea {
   width: 100%;
-  height: 200px;
+  height: 240px;
   font-family: var(--font-mono);
   font-size: 0.84rem;
   line-height: 1.5;
   resize: vertical;
 }
 
-/* Canlı Ses Kaydedici & Analiz Modülü */
-.voice-recorder-widget {
-  background: linear-gradient(135deg, var(--bg-surface), var(--bg-surface-alt));
-  border: 1.5px solid var(--primary);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  margin-bottom: 14px;
-  box-shadow: var(--shadow-sm);
-}
-
-.voice-recorder-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.recorder-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--primary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.recording-timer {
+/* ==========================================================================
+   SES KAYDEDİCİ VE CANLI DİKTE MODÜLÜ STİLLERİ
+   ========================================================================== */
+.timer-badge {
   font-family: var(--font-mono);
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  padding: 2px 8px;
+  font-size: 0.85rem;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
 }
 
-.recording-timer.timer-active {
-  color: var(--danger);
-  border-color: var(--danger-border);
+.timer-badge.timer-active {
   background-color: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
   animation: pulse-recording 1.2s infinite;
 }
 
-.recorder-controls-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
+/* Canlı Ses Seviyesi Visualizer Canvas */
+.visualizer-wrapper {
+  background-color: var(--bg-surface-alt);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  margin-bottom: 12px;
 }
 
-.btn-record {
-  flex: 1;
+.visualizer-wrapper canvas {
+  width: 100%;
+  height: 28px;
+  display: block;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+}
+
+/* Kayıt Kontrol Butonları Grid */
+.recorder-controls-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.btn-record-start {
   background-color: var(--primary);
   color: #ffffff;
-  border-color: var(--primary);
-  font-weight: 600;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 14px;
+  font-weight: 600;
 }
 
-.btn-record:hover {
+.btn-record-start:hover {
   background-color: var(--primary-hover);
 }
 
-.record-icon-circle {
+.rec-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -450,13 +437,13 @@ body {
   display: inline-block;
 }
 
-.btn-record.recording-active {
+.btn-record-start.recording-active {
   background-color: var(--danger);
   border-color: var(--danger);
   animation: pulse-recording 1.2s infinite;
 }
 
-.btn-record.recording-active .record-icon-circle {
+.btn-record-start.recording-active .rec-dot {
   background-color: #ffffff;
   animation: blink-dot 0.8s infinite;
 }
@@ -466,72 +453,173 @@ body {
   50% { opacity: 0.2; }
 }
 
-.speaker-select-group {
+/* Konuşmacı Geçiş Düğmeleri (Büyük Butonlar + Klavye Kısayolu) */
+.speaker-toggle-container {
+  background-color: var(--bg-surface-alt);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.speaker-toggle-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+.speaker-btn-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.speaker-btn {
+  padding: 10px 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  font-size: 0.8rem;
+}
+
+.speaker-btn:hover {
+  border-color: var(--primary);
+  color: var(--text-main);
+}
+
+.speaker-btn.active-child {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary-hover);
+  box-shadow: 0 0 0 2px var(--primary-focus);
+}
+
+.speaker-btn.active-therapist {
+  background-color: var(--info-bg);
+  border-color: var(--info);
+  color: var(--info);
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.25);
+}
+
+/* Canlı Dikte ve KVKK Onay Kutusu */
+.live-dictation-box {
+  background-color: var(--bg-surface-alt);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.dictation-consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.dictation-consent-label input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.dictation-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dictation-status-text {
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
-.speaker-select-group select {
-  padding: 6px 8px;
-  font-size: 0.82rem;
+.dictation-status-text.status-active {
+  color: var(--danger);
+  font-weight: 600;
 }
 
-.visualizer-container {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 8px;
-  margin-bottom: 10px;
-}
-
-.visualizer-container canvas {
-  width: 100%;
-  height: 36px;
-  display: block;
-}
-
-.interim-preview {
-  font-size: 0.8rem;
-  font-style: italic;
+.dictation-interim {
+  font-size: 0.78rem;
   color: var(--primary);
   margin-top: 6px;
-  min-height: 18px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-light);
+  font-style: italic;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.audio-player-container {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 8px;
-  margin-bottom: 10px;
+/* Düzeltme Akışı Kalıcı Uyarısı */
+.correction-alert {
+  background-color: #fffaf0;
+  border: 1px solid #feebc8;
+  color: #7b341e;
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  display: flex;
+  gap: 8px;
+  line-height: 1.35;
+  margin-bottom: 12px;
 }
 
-.audio-actions {
+[data-theme="dark"] .correction-alert {
+  background-color: #382513;
+  border-color: #653614;
+  color: #fbd38d;
+}
+
+.correction-alert .alert-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+/* Ses Çalma ve İndirme Kartı */
+.audio-player-card {
+  background-color: var(--bg-surface-alt);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.audio-player-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 6px;
+  font-size: 0.84rem;
 }
 
-.auto-analyze-toggle {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.auto-analyze-toggle label {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--primary);
+  transition: width 0.2s ease;
 }
 
 .transcript-actions {

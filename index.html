@@ -1,24 +1,29 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dil Analizi - Klinik Dil Örneği Analizi (LSA)</title>
-  <meta name="description" content="Westerveld & Claessen (2014), Heilmann ve ark. (2010) ve Özdemir (2010) temelli tarayıcı tabanlı klinik çocuk dil örneği analiz aracı.">
+  <meta name="description"
+    content="Westerveld & Claessen (2014), Heilmann ve ark. (2010) ve Özdemir (2010) temelli tarayıcı tabanlı klinik çocuk dil örneği analiz aracı.">
   <link rel="stylesheet" href="./css/style.css">
   <!-- Chart.js UMD -->
   <script src="./vendor/chart.umd.min.js"></script>
 </head>
+
 <body>
 
   <!-- Kanıt Şeridi -->
   <aside class="evidence-ribbon" aria-label="Klinik Kanıt">
-    Klinisyenlerin yalnızca %56'sı dil örneklerini kaydetmekte ve %12,5'i bilgisayar destekli analiz kullanmaktadır; transkripsiyon süresi başlıca engeldir (Westerveld &amp; Claessen, 2014).
+    Klinisyenlerin yalnızca %56'sı dil örneklerini kaydetmekte ve %12,5'i bilgisayar destekli analiz kullanmaktadır;
+    transkripsiyon süresi başlıca engeldir (Westerveld &amp; Claessen, 2014).
   </aside>
 
   <!-- Gizlilik ve KVKK Şeridi -->
   <div class="privacy-banner" role="status">
-    <span>🔒 <strong>Gizlilik Güvencesi:</strong> Tüm analiz tarayıcınızda yapılır, hiçbir ses veya metin verisi sunucuya gönderilmez.</span>
+    <span>🔒 <strong>Gizlilik Güvencesi:</strong> Tüm analiz tarayıcınızda yapılır, hiçbir ses veya metin verisi
+      sunucuya gönderilmez.</span>
     <span>⚠️ <strong>KVKK Uyarısı:</strong> Gerçek danışan adı yerine anonim kod (örn: D-01) kullanınız.</span>
   </div>
 
@@ -32,12 +37,15 @@
           </svg>
           Dil Analizi
         </h1>
-        <p>Westerveld &amp; Claessen (2014), Heilmann ve ark. (2010) ve Özdemir (2010) temelli klinik dil örneği analizi</p>
+        <p>Westerveld &amp; Claessen (2014), Heilmann ve ark. (2010) ve Özdemir (2010) temelli klinik dil örneği analizi
+        </p>
       </div>
 
       <div class="header-actions">
         <button type="button" id="theme-toggle-btn" class="btn btn-secondary" aria-label="Tema Değiştir">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Koyu Mod
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg> Koyu Mod
         </button>
         <button type="button" id="btn-export-json" class="btn btn-secondary" title="Analizi JSON olarak indir">
           JSON İndir
@@ -121,7 +129,8 @@
 
         <div class="form-group">
           <label for="sample-duration">Örnek Süresi (Dakika, isteğe bağlı):</label>
-          <input type="number" id="sample-duration" class="form-control" value="5" min="0.5" max="60" step="0.5" placeholder="Örn: 1, 3 veya 5">
+          <input type="number" id="sample-duration" class="form-control" value="5" min="0.5" max="60" step="0.5"
+            placeholder="Örn: 1, 3 veya 5">
         </div>
 
         <!-- Dinamik Bağlam Eşleşme Uyarısı (Makale 2) -->
@@ -137,53 +146,7 @@
           <span id="live-utterance-badge" class="badge badge-secondary">0 Çocuk İfadesi</span>
         </h3>
 
-        <!-- CANLI SES KAYDEDİCİ VE ANLIK ANALİZ WIDGETI -->
-        <div class="voice-recorder-widget" id="voice-recorder-box">
-          <div class="voice-recorder-header">
-            <span class="recorder-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-              Canlı Ses Kaydedici &amp; Anlık Analiz
-            </span>
-            <span id="recording-timer" class="recording-timer">00:00</span>
-          </div>
 
-          <div class="recorder-controls-row">
-            <button type="button" id="btn-toggle-record" class="btn btn-record" title="Konuşmaya başlayın; ses kaydedilir ve transkript otomatik dökülür">
-              <span class="record-icon-circle"></span>
-              <span id="record-btn-text">Kaydı Başlat &amp; Konuş</span>
-            </button>
-
-            <div class="speaker-select-group">
-              <label for="record-speaker-select">Konuşmacı:</label>
-              <select id="record-speaker-select" class="form-control">
-                <option value="Ç" selected>Ç: Çocuk</option>
-                <option value="T">T: Terapist</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Canlı Ses Dalgası / Seviye Göstergesi -->
-          <div id="visualizer-container" class="visualizer-container" style="display: none;">
-            <canvas id="audio-visualizer" width="340" height="36"></canvas>
-            <div id="interim-speech-preview" class="interim-preview">Mikrofon dinleniyor...</div>
-          </div>
-
-          <!-- Kayıt Tamamlandığında Ses Çalar -->
-          <div id="audio-player-container" class="audio-player-container" style="display: none;">
-            <audio id="recorded-audio" controls style="width: 100%; height: 36px;"></audio>
-            <div class="audio-actions">
-              <a id="btn-download-audio" class="btn btn-sm btn-secondary" download="dil-analizi-ses-kaydi.webm">Sesi İndir (.webm)</a>
-              <span class="text-muted" style="font-size: 0.75rem;">Ses güvenle yerel bellektedir.</span>
-            </div>
-          </div>
-
-          <div class="auto-analyze-toggle">
-            <label>
-              <input type="checkbox" id="auto-analyze-checkbox" checked>
-              Kayıt durduğunda transkripti otomatik analiz et
-            </label>
-          </div>
-        </div>
 
         <div class="transcript-actions">
           <select id="example-select" class="form-control" style="flex: 1;" aria-label="Örnek Transkript Seç">
@@ -214,13 +177,123 @@
           </ul>
         </details>
 
-        <textarea id="transcript-input" class="form-control transcript-textarea" placeholder="[00:02] T: Ne gördün parkta?&#10;[00:05] Ç: Büyük bir köpek gördüm.&#10;[00:09] Ç: (ııı) ağaca tırmandı."></textarea>
+        <textarea id="transcript-input" class="form-control transcript-textarea"
+          placeholder="[00:02] T: Ne gördün parkta?&#10;[00:05] Ç: Büyük bir köpek gördüm.&#10;[00:09] Ç: (ııı) ağaca tırmandı."></textarea>
 
         <div style="margin-top: 14px;">
           <button type="button" id="btn-analyze" class="btn btn-primary btn-lg btn-block">
             Dil Örneğini Analiz Et
           </button>
         </div>
+      </section>
+
+      <!-- 3. Ses Kaydedici & Canlı Dikte Modülü -->
+      <section class="panel-card" id="audio-recorder-section" aria-labelledby="recorder-title">
+        <h3 id="recorder-title">
+          <span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            3. Ses Kaydı &amp; Canlı Dikte
+          </span>
+          <span id="recording-timer-badge" class="badge badge-secondary timer-badge">00:00</span>
+        </h3>
+
+        <!-- Canlı Ses Seviyesi Göstergesi (Canvas AnalyserNode) -->
+        <div class="visualizer-wrapper">
+          <canvas id="audio-level-canvas" width="340" height="28" title="Canlı Ses Seviyesi (AnalyserNode)"></canvas>
+        </div>
+
+        <!-- Kayıt Kontrol Butonları -->
+        <div class="recorder-controls-grid">
+          <button type="button" id="btn-rec-start" class="btn btn-record-start">
+            <span class="rec-dot"></span> Başlat
+          </button>
+          <button type="button" id="btn-rec-pause" class="btn btn-secondary" disabled>
+            Duraklat
+          </button>
+          <button type="button" id="btn-rec-resume" class="btn btn-secondary" style="display: none;">
+            Devam
+          </button>
+          <button type="button" id="btn-rec-stop" class="btn btn-danger" disabled>
+            ■ Durdur
+          </button>
+        </div>
+
+        <!-- Konuşmacı Seçici (Büyük Geçiş Düğmeleri + Klavye Kısayolu) -->
+        <div class="speaker-toggle-container">
+          <div class="speaker-toggle-label">
+            <strong>Aktif Konuşmacı:</strong>
+            <small class="text-muted">(Değiştirmek için: <code>Tab</code> veya <code>Space</code>)</small>
+          </div>
+          <div class="speaker-btn-group" role="radiogroup" aria-label="Aktif Konuşmacı">
+            <button type="button" id="btn-speaker-child" class="btn speaker-btn active-child" role="radio" aria-checked="true">
+              👶 Çocuk (Ç:)
+            </button>
+            <button type="button" id="btn-speaker-therapist" class="btn speaker-btn" role="radio" aria-checked="false">
+              👩‍⚕️ Terapist (T:)
+            </button>
+          </div>
+        </div>
+
+        <!-- Canlı Dikte ve KVKK Onay Kutusu -->
+        <div class="live-dictation-box">
+          <label class="dictation-consent-label">
+            <input type="checkbox" id="dictation-consent-checkbox">
+            <span>
+              Bu özellik sesi tarayıcı sağlayıcısının (Chrome için Google) sunucularına gönderebilir; çocuk ses verisi için KVKK açısından onay verdiğimi kabul ediyorum.
+            </span>
+          </label>
+          <div class="dictation-actions">
+            <button type="button" id="btn-toggle-dictation" class="btn btn-sm btn-secondary" disabled title="Önce yukarıdaki KVKK onay kutusunu işaretleyiniz">
+              🎙️ Canlı Dikteyi Aç (tr-TR)
+            </button>
+            <span id="dictation-status-indicator" class="dictation-status-text">Dikte kapalı</span>
+          </div>
+          <!-- Anlık Tanıma Önizlemesi (Interim) -->
+          <div id="dictation-interim-box" class="dictation-interim" style="display: none;">
+            <em>Dinleniyor: <span id="interim-text">...</span></em>
+          </div>
+        </div>
+
+        <!-- Düzeltme Akışı Kalıcı Uyarısı -->
+        <div class="correction-alert">
+          <div class="alert-icon">ℹ️</div>
+          <div class="alert-text">
+            <strong>Düzeltme Hatırlatması:</strong> Otomatik transkript taslaktır, dinleyerek düzeltin; aksi halde morfolojik hatalar ve labirentler tanıma motoru tarafından silinebilir.
+          </div>
+        </div>
+
+        <!-- Kayıt Tamamlandığında Çalma ve İndirme Alanı -->
+        <div id="audio-player-card" class="audio-player-card" style="display: none;">
+          <div class="audio-player-header">
+            <strong>Kayıt Dinleme:</strong>
+            <span id="audio-duration-info" class="text-muted" style="font-size: 0.8rem;"></span>
+          </div>
+          <audio id="audio-player" controls style="width: 100%; margin: 8px 0;"></audio>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <a id="btn-download-audio" class="btn btn-sm btn-secondary" download="dil-kaydi.webm">
+              💾 Sesi İndir (.webm/.mp4)
+            </a>
+            <button type="button" id="btn-whisper-transcribe" class="btn btn-sm btn-primary" title="Transformers.js ile tamamen yerel çevrimdışı transkripsiyon">
+              🤖 Cihazda Yazıya Dök (Whisper)
+            </button>
+          </div>
+          <!-- Whisper İlerleme Çubuğu -->
+          <div id="whisper-progress-box" style="display: none; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px;">
+              <span id="whisper-status-label">Model hazırlanıyor...</span>
+              <span id="whisper-percent-label">0%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div id="whisper-progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
       </section>
 
     </aside>
@@ -321,7 +394,8 @@
               </h4>
               <span class="citation-tag" data-citation="heilmann2010">Heilmann 2010 Tablo 2 ⓘ</span>
             </div>
-            <p id="reliability-mapping-note" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;"></p>
+            <p id="reliability-mapping-note" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">
+            </p>
 
             <div class="data-table-container">
               <table class="data-table">
@@ -340,7 +414,8 @@
             </div>
 
             <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-              * Alfa yorum bantları: &lt;0,60 Yetersiz (Kırmızı), 0,60–0,65 İstenmeyen, 0,65–0,70 Asgari Kabul Edilebilir, 0,70–0,80 İyi, ≥0,80 Çok İyi.
+              * Alfa yorum bantları: &lt;0,60 Yetersiz (Kırmızı), 0,60–0,65 İstenmeyen, 0,65–0,70 Asgari Kabul
+              Edilebilir, 0,70–0,80 İyi, ≥0,80 Çok İyi.
             </div>
           </div>
 
@@ -352,7 +427,8 @@
                 <li>Kapsamlı klinik değerlendirmenin bir parçası olarak.</li>
                 <li>Müdahale sürecinde ilerleme izleme (Response to Intervention - RTI).</li>
                 <li>Konuşma hızı (WPM), sözcük dağarcığı çeşitliliği (NDW) ve genel üretkenlik (NTU) taranırken.</li>
-                <li><strong>Uygun Değildir:</strong> Belirli gramer morfemleri, labirent örüntüleri veya tek başına tanı kararı için geleneksel ≥50 ifade toplanmalıdır.</li>
+                <li><strong>Uygun Değildir:</strong> Belirli gramer morfemleri, labirent örüntüleri veya tek başına tanı
+                  kararı için geleneksel ≥50 ifade toplanmalıdır.</li>
               </ul>
             </div>
             <div class="panel-card">
@@ -368,7 +444,10 @@
 
           <!-- Kalıcı Sınırlılık Uyarısı -->
           <div class="norm-disclaimer" style="margin-top: 14px;">
-            <strong>Kalıcı Sınırlılık Notu (Heilmann ve ark., 2010):</strong> Güvenilirlik verileri tipik gelişim gösteren, tek dilli İngilizce konuşan 231 çocuktan (2;8–13;3 yaş) elde edilmiştir. Dil bozukluğu olan ya da Türkçe konuşan çocuklara doğrudan genelleme yapılamaz; çalışmada geçerlik değil yalnızca güvenilirlik incelenmiştir.
+            <strong>Kalıcı Sınırlılık Notu (Heilmann ve ark., 2010):</strong> Güvenilirlik verileri tipik gelişim
+            gösteren, tek dilli İngilizce konuşan 231 çocuktan (2;8–13;3 yaş) elde edilmiştir. Dil bozukluğu olan ya da
+            Türkçe konuşan çocuklara doğrudan genelleme yapılamaz; çalışmada geçerlik değil yalnızca güvenilirlik
+            incelenmiştir.
           </div>
 
         </div>
@@ -423,7 +502,8 @@
           <div class="panel-card">
             <h5>Örnek İfadeler Morfem Ayrıştırması (İlk 8 İfade)</h5>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
-              Kural tabanlı Türkçe morfoloji ayrıştırıcısı çıktısı. Kesikli çizgili çipler sözlükte doğrudan yer almayan sezgisel kökleri gösterir.
+              Kural tabanlı Türkçe morfoloji ayrıştırıcısı çıktısı. Kesikli çizgili çipler sözlükte doğrudan yer almayan
+              sezgisel kökleri gösterir.
             </p>
             <div id="morpheme-breakdown-list"></div>
           </div>
@@ -469,7 +549,8 @@
               <span class="citation-tag" data-citation="heilmann2010">Heilmann 2010 ⓘ</span>
             </div>
             <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
-              Makale 1 uyarınca soru sözcükleri (0,29/dk), olumsuzluklar (1,79/dk) ve işaret zamirleri (1,58/dk) nadir görülen ölçütlerdir ve kısa örneklerde belgelenemeyebilir.
+              Makale 1 uyarınca soru sözcükleri (0,29/dk), olumsuzluklar (1,79/dk) ve işaret zamirleri (1,58/dk) nadir
+              görülen ölçütlerdir ve kısa örneklerde belgelenemeyebilir.
             </p>
             <div id="rare-markers-box"></div>
           </div>
@@ -477,7 +558,10 @@
           <div class="panel-card">
             <h5>Metodolojik Not: NDW ve Üretkenlik</h5>
             <p style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5;">
-              Farklı Sözcük Sayısı (NDW), literatürde yaşla en güçlü korelasyona sahip ve en kapsamlı doğrulanmış sözcük ölçütüdür (Klee 1992; Miller 1991). Ancak süre kısıtlı örneklerde NDW konuşma üretkenliğinden ve hızından doğrudan etkilenir. WPM ve NTU benzer üretkenlik eğilimi gösterse de, WPM gramer ve sözcük olgunluğuna daha duyarlıdır.
+              Farklı Sözcük Sayısı (NDW), literatürde yaşla en güçlü korelasyona sahip ve en kapsamlı doğrulanmış sözcük
+              ölçütüdür (Klee 1992; Miller 1991). Ancak süre kısıtlı örneklerde NDW konuşma üretkenliğinden ve hızından
+              doğrudan etkilenir. WPM ve NTU benzer üretkenlik eğilimi gösterse de, WPM gramer ve sözcük olgunluğuna
+              daha duyarlıdır.
             </p>
           </div>
 
@@ -493,7 +577,8 @@
               <span class="citation-tag" data-citation="heilmann2010">Heilmann 2010 ⓘ</span>
             </div>
             <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">
-              Labirentler; dolgu sesleri (ııı, eee), sözcük tekrarlarını ve yanlış başlangıçları içerir. Yaşla doğrudan ilişkili olmamakla birlikte bilişsel işlem yükünü açıklamada kritiktir.
+              Labirentler; dolgu sesleri (ııı, eee), sözcük tekrarlarını ve yanlış başlangıçları içerir. Yaşla doğrudan
+              ilişkili olmamakla birlikte bilişsel işlem yükünü açıklamada kritiktir.
             </p>
             <div id="maze-breakdown-box" class="metrics-grid"></div>
           </div>
@@ -519,7 +604,8 @@
                 <span class="citation-tag" data-citation="heilmann2010">Heilmann 2010 ⓘ</span>
               </div>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
-                Karmaşık sözdizimi hikâyenin nedensel kısımlarında ("çünkü", "kurtuldu") yoğunlaşır; bu nedenle MLUm hikâye boyunca değişkenlik gösterebilir.
+                Karmaşık sözdizimi hikâyenin nedensel kısımlarında ("çünkü", "kurtuldu") yoğunlaşır; bu nedenle MLUm
+                hikâye boyunca değişkenlik gösterebilir.
               </p>
               <div id="story-grammar-box"></div>
             </div>
@@ -550,7 +636,9 @@
               <div class="step-item"><span class="step-circle">6</span> Denence / Rapor</div>
             </div>
             <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-              Dayandığı yaklaşımlar: Miles &amp; Huberman (veri azaltma-görselleştirme-sonuç çıkarma), Dey (betimleme-sınıflandırma-ilişkilendirme), Strauss &amp; Corbin (açık-eksenel-seçici kodlama), Wolcott (betimleme-analiz-yorumlama).
+              Dayandığı yaklaşımlar: Miles &amp; Huberman (veri azaltma-görselleştirme-sonuç çıkarma), Dey
+              (betimleme-sınıflandırma-ilişkilendirme), Strauss &amp; Corbin (açık-eksenel-seçici kodlama), Wolcott
+              (betimleme-analiz-yorumlama).
             </p>
           </div>
 
@@ -636,8 +724,11 @@
             <h5>Nitel Araştırmada Geçerlik ve Güvenilirlik Hatırlatması (Özdemir, 2010)</h5>
             <ul style="font-size: 0.82rem; padding-left: 18px; line-height: 1.6; color: var(--text-muted);">
               <li><strong>İç Geçerlik:</strong> Çıkarılan kategoriler doğrudan çocuk alıntılarıyla kanıtlanmalıdır.</li>
-              <li><strong>Araştırmacılar Arası Tutarlılık:</strong> İki bağımsız klinisyenin kodlamaları karşılaştırıldığında [Görüş Birliği / (Görüş Birliği + Görüş Ayrılığı)] × 100 formülü ile uzlaşma oranı hesaplanmalı, %80 eşiği aranmalıdır.</li>
-              <li><strong>Denencelerin Sınanması:</strong> Türetilen temalar ham transkripte geri dönülerek teyit edilmelidir.</li>
+              <li><strong>Araştırmacılar Arası Tutarlılık:</strong> İki bağımsız klinisyenin kodlamaları
+                karşılaştırıldığında [Görüş Birliği / (Görüş Birliği + Görüş Ayrılığı)] × 100 formülü ile uzlaşma oranı
+                hesaplanmalı, %80 eşiği aranmalıdır.</li>
+              <li><strong>Denencelerin Sınanması:</strong> Türetilen temalar ham transkripte geri dönülerek teyit
+                edilmelidir.</li>
             </ul>
           </div>
 
@@ -683,7 +774,10 @@
               </div>
             </div>
             <p style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5;">
-              Klinisyenlerin %80'inden fazlası için transkripsiyon ve analiz <strong>ZAMAN</strong> kısıtlılığı başlıca engeldir. %57'si güvenilir bir analiz servisini/yazılımını tercih edeceğini belirtmiştir. Standart testlerde en sık Bus Story (%54) kullanılmakta, ancak normatif uyumsuzluk aşırı tanı riskine yol açmaktadır. Bu yazılım bu boşluğu kapatmayı hedefler.
+              Klinisyenlerin %80'inden fazlası için transkripsiyon ve analiz <strong>ZAMAN</strong> kısıtlılığı başlıca
+              engeldir. %57'si güvenilir bir analiz servisini/yazılımını tercih edeceğini belirtmiştir. Standart
+              testlerde en sık Bus Story (%54) kullanılmakta, ancak normatif uyumsuzluk aşırı tanı riskine yol
+              açmaktadır. Bu yazılım bu boşluğu kapatmayı hedefler.
             </p>
           </div>
 
@@ -697,10 +791,12 @@
 
           <!-- İlerleme İzleme (Longitudinal Tracking) -->
           <div class="panel-card" style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
               <div>
                 <h5 style="margin: 0;">İlerleme İzleme (Oturumlar Arası Değişim)</h5>
-                <small class="text-muted">Makale 1 kuralı: Oturumları karşılaştırırken AYNI bağlam ve uyaranlar kullanılmalıdır.</small>
+                <small class="text-muted">Makale 1 kuralı: Oturumları karşılaştırırken AYNI bağlam ve uyaranlar
+                  kullanılmalıdır.</small>
               </div>
               <div style="display: flex; gap: 8px;">
                 <button type="button" id="btn-save-session" class="btn btn-primary btn-sm">
@@ -737,10 +833,14 @@
           <div class="panel-card" style="border-left: 4px solid var(--danger);">
             <h5 style="color: var(--danger); margin-bottom: 6px;">⚠️ Yasal ve Klinik Sorumluluk Reddi (Disclaimer)</h5>
             <ul style="font-size: 0.82rem; padding-left: 18px; line-height: 1.6; color: var(--text-muted);">
-              <li>Bu web sitesi bir <strong>klinik karar DESTEK aracıdır</strong>, tek başına tıbbi ya da eğitsel tanı koymaz.</li>
-              <li>Türkçe için standardize edilmiş normatif veriler mevcut değildir; sunulan karşılaştırmalar ilgili akademik çalışmalardaki eşiklere dayanır.</li>
-              <li>Kural tabanlı morfem ve sözcük sınıfı ayrıştırmaları algoritma kestirimidir; klinik uzman tarafından doğrulanmalıdır.</li>
-              <li>Westerveld &amp; Claessen (2014) anketi kartopu örneklemi ve çevrimiçi anket katılımı sınırlılıklarına sahiptir.</li>
+              <li>Bu web sitesi bir <strong>klinik karar DESTEK aracıdır</strong>, tek başına tıbbi ya da eğitsel tanı
+                koymaz.</li>
+              <li>Türkçe için standardize edilmiş normatif veriler mevcut değildir; sunulan karşılaştırmalar ilgili
+                akademik çalışmalardaki eşiklere dayanır.</li>
+              <li>Kural tabanlı morfem ve sözcük sınıfı ayrıştırmaları algoritma kestirimidir; klinik uzman tarafından
+                doğrulanmalıdır.</li>
+              <li>Westerveld &amp; Claessen (2014) anketi kartopu örneklemi ve çevrimiçi anket katılımı sınırlılıklarına
+                sahiptir.</li>
             </ul>
           </div>
 
@@ -769,4 +869,5 @@
   <!-- Ana Uygulama Modülü -->
   <script type="module" src="./js/app.js"></script>
 </body>
+
 </html>

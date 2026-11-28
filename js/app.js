@@ -10,24 +10,17 @@ import { ReliabilityEngine } from "./reliability.js";
 import { QualitativeAnalysisEngine } from "./qualitative.js";
 import { UIController } from "./ui.js";
 import { EXAMPLE_TRANSCRIPTS } from "../data/examples.js";
+import { VoiceRecorder, LiveDictationService, OfflineWhisperService } from "./recorder.js";
 
 class App {
   constructor() {
     this.ui = new UIController();
     this.qualitativeEngine = new QualitativeAnalysisEngine();
     this.lastAnalysisResult = null;
-
-    // Ses Kayıt & Tanıma Durumu
-    this.speechRecognition = null;
-    this.mediaRecorder = null;
-    this.audioChunks = [];
-    this.audioStream = null;
-    this.audioContext = null;
-    this.analyser = null;
-    this.animFrameId = null;
-    this.recordingStartTime = null;
-    this.recordingTimerId = null;
-    this.isRecording = false;
+    this.voiceRecorder = null;
+    this.dictationService = null;
+    this.whisperService = null;
+    this.activeSpeaker = "Ç";
 
     this.init();
   }
@@ -35,7 +28,7 @@ class App {
   init() {
     this.initTheme();
     this.initEventListeners();
-    this.initVoiceRecorder();
+    this.initRecorderModule();
     this.initRouting();
     this.loadInitialInputs();
     this.updateContextWarning();
@@ -226,310 +219,309 @@ class App {
   }
 
   /**
-   * Canlı Ses Kaydedici & Anlık Analiz Modülü (MediaRecorder + Web Speech API)
+   * Ses Kaydedici, Canlı Dikte ve Çevrimdışı Whisper Modülü Entegrasyonu
    */
-  initVoiceRecorder() {
-    const recordBtn = document.getElementById("btn-toggle-record");
-    if (!recordBtn) return;
+  initRecorderModule() {
+    const timerBadge = document.getElementById("recording-timer-badge");
+    const btnStart = document.getElementById("btn-rec-start");
+    const btnPause = document.getElementById("btn-rec-pause");
+    const btnResume = document.getElementById("btn-rec-resume");
+    const btnStop = document.getElementById("btn-rec-stop");
 
-    recordBtn.addEventListener("click", () => {
-      if (this.isRecording) {
-        this.stopVoiceRecording();
-      } else {
-        this.startVoiceRecording();
+    // 1. MediaRecorder Nesnesi
+    this.voiceRecorder = new VoiceRecorder({
+      onTimerUpdate: (secs, formatted) => {
+        if (timerBadge) {
+          timerBadge.textContent = formatted;
+          timerBadge.classList.add("timer-active");
+        }
+      },
+      onStateChange: (state) => {
+        if (state === "recording") {
+          if (btnStart) {
+            btnStart.disabled = true;
+            btnStart.classList.add("recording-active");
+          }
+          if (btnPause) {
+            btnPause.disabled = false;
+            btnPause.style.display = "inline-flex";
+          }
+          if (btnResume) btnResume.style.display = "none";
+          if (btnStop) btnStop.disabled = false;
+        } else if (state === "paused") {
+          if (btnPause) btnPause.style.display = "none";
+          if (btnResume) {
+            btnResume.style.display = "inline-flex";
+            btnResume.disabled = false;
+          }
+        } else if (state === "inactive") {
+          if (btnStart) {
+            btnStart.disabled = false;
+            btnStart.classList.remove("recording-active");
+          }
+          if (btnPause) {
+            btnPause.disabled = true;
+            btnPause.style.display = "inline-flex";
+          }
+          if (btnResume) btnResume.style.display = "none";
+          if (btnStop) btnStop.disabled = true;
+          if (timerBadge) timerBadge.classList.remove("timer-active");
+        }
+      },
+      onError: (msg) => {
+        this.ui.showToast(msg, "danger");
+      },
+      onRecordingComplete: (data) => {
+        const playerCard = document.getElementById("audio-player-card");
+        const player = document.getElementById("audio-player");
+        const downloadBtn = document.getElementById("btn-download-audio");
+        const durationInfo = document.getElementById("audio-duration-info");
+
+        if (playerCard) playerCard.style.display = "block";
+        if (player) {
+          player.src = data.url;
+        }
+        if (downloadBtn) {
+          downloadBtn.href = data.url;
+          downloadBtn.download = `dil-kaydi-${Date.now()}.${data.ext}`;
+        }
+        if (durationInfo) {
+          const m = Math.floor(data.elapsedSeconds / 60);
+          const s = data.elapsedSeconds % 60;
+          durationInfo.textContent = `Toplam: ${m > 0 ? `${m} dk ` : ""}${s} sn`;
+        }
+
+        // Örnek süresi alanına otomatik yaz (dakika cinsinden)
+        const durationInput = document.getElementById("sample-duration");
+        if (durationInput) {
+          durationInput.value = data.durationMinutes;
+          this.saveInputsToStorage();
+          this.updateContextWarning();
+        }
+
+        this.ui.showToast(`Ses kaydı tamamlandı (${data.elapsedSeconds} sn). Süre profil alanına işlendi.`, "success");
       }
     });
 
-    // Web Speech API desteğini kontrol et
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRec) {
-      this.speechRecognition = new SpeechRec();
-      this.speechRecognition.lang = "tr-TR";
-      this.speechRecognition.continuous = true;
-      this.speechRecognition.interimResults = true;
-
-      this.speechRecognition.onresult = (event) => {
-        let interimText = "";
-        let finalText = "";
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const trans = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalText += trans.trim() + " ";
-          } else {
-            interimText += trans.trim() + " ";
-          }
-        }
-
-        const previewEl = document.getElementById("interim-speech-preview");
-        if (previewEl) {
-          previewEl.textContent = interimText ? `Dinleniyor: "${interimText}"` : "Konuşmanız dinleniyor...";
-        }
-
-        if (finalText.trim()) {
-          this.appendTranscribedLine(finalText.trim());
-        }
-      };
-
-      this.speechRecognition.onerror = (e) => {
-        console.warn("Konuşma tanıma hatası:", e.error);
-        const previewEl = document.getElementById("interim-speech-preview");
-        if (previewEl) {
-          previewEl.textContent = `Ses algılama: ${e.error === "no-speech" ? "ses bekleniyor..." : e.error}`;
-        }
-      };
-
-      this.speechRecognition.onend = () => {
-        if (this.isRecording) {
-          // Devam eden kayıtta otomatik yeniden başlat
-          try {
-            this.speechRecognition.start();
-          } catch (e) {}
-        }
-      };
-    }
-  }
-
-  /**
-   * Ses Kaydını ve Canlı Transkripsiyonu Başlat
-   */
-  async startVoiceRecording() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Tarayıcınız mikrofon erişimini (MediaDevices API) desteklememektedir.");
-      return;
-    }
-
-    try {
-      this.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (err) {
-      console.error("Mikrofon erişim hatası:", err);
-      this.ui.showToast("Mikrofon izni verilemedi. Lütfen tarayıcı ayarlarından mikrofona izin veriniz.", "danger");
-      return;
-    }
-
-    this.isRecording = true;
-    this.audioChunks = [];
-
-    // 1. MediaRecorder başlat (Ses Dosyası Kaydı)
-    try {
-      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : (MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "");
-      this.mediaRecorder = mime ? new MediaRecorder(this.audioStream, { mimeType: mime }) : new MediaRecorder(this.audioStream);
-
-      this.mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          this.audioChunks.push(e.data);
-        }
-      };
-
-      this.mediaRecorder.onstop = () => {
-        this.finalizeAudioPlayback();
-      };
-
-      this.mediaRecorder.start(250); // 250ms dilimler
-    } catch (e) {
-      console.warn("MediaRecorder başlatılamadı:", e);
-    }
-
-    // 2. Web Speech API başlat (Konuşmayı Metne Çevirme)
-    if (this.speechRecognition) {
+    // Kayıt buton olayları
+    btnStart?.addEventListener("click", async () => {
       try {
-        this.speechRecognition.start();
+        await this.voiceRecorder.start();
       } catch (e) {
-        console.warn("Speech recognition başlatma hatası:", e);
+        // Hata onError içinde toast olarak gösterildi
+      }
+    });
+
+    btnPause?.addEventListener("click", () => {
+      this.voiceRecorder.pause();
+    });
+
+    btnResume?.addEventListener("click", () => {
+      this.voiceRecorder.resume();
+    });
+
+    btnStop?.addEventListener("click", () => {
+      this.voiceRecorder.stop();
+      if (this.dictationService && this.dictationService.isListening) {
+        this.dictationService.stop();
+      }
+    });
+
+    // 2. Konuşmacı Seçici (Ç / T) ve Klavye Kısayolları (Tab / Space)
+    const btnChild = document.getElementById("btn-speaker-child");
+    const btnTherapist = document.getElementById("btn-speaker-therapist");
+
+    btnChild?.addEventListener("click", () => this.setActiveSpeaker("Ç"));
+    btnTherapist?.addEventListener("click", () => this.setActiveSpeaker("T"));
+
+    window.addEventListener("keydown", (e) => {
+      const activeEl = document.activeElement;
+      const tag = activeEl ? activeEl.tagName.toLowerCase() : "";
+      const isInput = tag === "input" || tag === "textarea";
+
+      // Tab tuşu veya input dışında Space basıldığında konuşmacıyı değiştir
+      if (e.key === "Tab" || (e.key === " " && !isInput)) {
+        e.preventDefault();
+        this.toggleActiveSpeaker();
+      }
+    });
+
+    // 3. Web Speech API Canlı Dikte (tr-TR)
+    const consentCheck = document.getElementById("dictation-consent-checkbox");
+    const btnDictate = document.getElementById("btn-toggle-dictation");
+    const dictationStatus = document.getElementById("dictation-status-indicator");
+    const interimBox = document.getElementById("dictation-interim-box");
+    const interimText = document.getElementById("interim-text");
+
+    if (!LiveDictationService.isSupported()) {
+      if (btnDictate) {
+        btnDictate.disabled = true;
+        btnDictate.title = "Tarayıcınız Web Speech API'yi desteklememektedir.";
+      }
+      if (dictationStatus) {
+        dictationStatus.textContent = "Tarayıcı desteği yok";
       }
     } else {
-      this.ui.showToast("Ses kaydediliyor (Otomatik metne döküm için Chrome/Edge önerilir).", "info");
+      this.dictationService = new LiveDictationService({
+        onInterimText: (text) => {
+          if (interimBox) interimBox.style.display = "block";
+          if (interimText) interimText.textContent = text;
+        },
+        onFinalSentence: (sentence, speaker) => {
+          if (interimBox) interimBox.style.display = "none";
+          if (!sentence || !sentence.trim()) return;
+
+          // Zaman damgası [mm:ss]
+          const elapsed = this.voiceRecorder ? this.voiceRecorder.elapsedSeconds : 0;
+          const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
+          const secs = String(elapsed % 60).padStart(2, "0");
+          const timestamp = `[${mins}:${secs}]`;
+
+          const line = `${timestamp} ${speaker}: ${sentence.trim()}`;
+          const textarea = document.getElementById("transcript-input");
+          if (textarea) {
+            const current = textarea.value.trim();
+            textarea.value = (current ? current + "\n" : "") + line;
+            this.updateUtteranceCount();
+            this.saveInputsToStorage();
+          }
+        },
+        onError: (err) => {
+          this.ui.showToast(`Dikte: ${err}`, "warning");
+        },
+        onStatusChange: (isListening) => {
+          if (isListening) {
+            if (btnDictate) {
+              btnDictate.classList.add("btn-danger");
+              btnDictate.classList.remove("btn-secondary");
+              btnDictate.innerHTML = "⏹️ Dikteyi Durdur";
+            }
+            if (dictationStatus) {
+              dictationStatus.textContent = "🎙️ Dinleniyor...";
+              dictationStatus.classList.add("status-active");
+            }
+          } else {
+            if (btnDictate) {
+              btnDictate.classList.remove("btn-danger");
+              btnDictate.classList.add("btn-secondary");
+              btnDictate.innerHTML = "🎙️ Canlı Dikteyi Aç (tr-TR)";
+            }
+            if (dictationStatus) {
+              dictationStatus.textContent = "Dikte kapalı";
+              dictationStatus.classList.remove("status-active");
+            }
+            if (interimBox) interimBox.style.display = "none";
+          }
+        }
+      });
+
+      consentCheck?.addEventListener("change", (e) => {
+        const checked = e.target.checked;
+        if (this.dictationService) {
+          this.dictationService.hasConsent = checked;
+        }
+        if (btnDictate) {
+          btnDictate.disabled = !checked;
+          btnDictate.title = checked ? "Canlı dikteyi başlat" : "Önce KVKK onay kutusunu işaretleyiniz";
+        }
+      });
+
+      btnDictate?.addEventListener("click", () => {
+        if (!this.dictationService) return;
+        if (this.dictationService.isListening) {
+          this.dictationService.stop();
+        } else {
+          try {
+            this.dictationService.start();
+          } catch (err) {
+            this.ui.showToast(err.message, "warning");
+          }
+        }
+      });
     }
 
-    // 3. AudioContext ve Canlı Dalga Çizici (Visualizer)
-    this.initAudioVisualizer(this.audioStream);
+    // 4. Çevrimdışı Whisper (Transformers.js)
+    const btnWhisper = document.getElementById("btn-whisper-transcribe");
+    const whisperBox = document.getElementById("whisper-progress-box");
+    const whisperStatus = document.getElementById("whisper-status-label");
+    const whisperPercent = document.getElementById("whisper-percent-label");
+    const whisperBar = document.getElementById("whisper-progress-bar");
 
-    // 4. Arayüz Güncelleme
-    const recordBtn = document.getElementById("btn-toggle-record");
-    const btnText = document.getElementById("record-btn-text");
-    const timerEl = document.getElementById("recording-timer");
-    const visContainer = document.getElementById("visualizer-container");
-    const playerContainer = document.getElementById("audio-player-container");
-
-    if (recordBtn) recordBtn.classList.add("recording-active");
-    if (btnText) btnText.textContent = "Kaydı Durdur & Analiz Et";
-    if (timerEl) timerEl.classList.add("timer-active");
-    if (visContainer) visContainer.style.display = "block";
-    if (playerContainer) playerContainer.style.display = "none";
-
-    // Süre Sayacı
-    this.recordingStartTime = Date.now();
-    this.recordingTimerId = setInterval(() => {
-      const elapsedSec = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, "0");
-      const secs = String(elapsedSec % 60).padStart(2, "0");
-      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
-    }, 1000);
-
-    this.ui.showToast("Ses kaydediliyor... Konuştuğunuzda transkript dökülecek ve anlık analiz edilecek.", "info");
-  }
-
-  /**
-   * Ses Kaydını Durdur ve Otomatik Analiz Et
-   */
-  stopVoiceRecording() {
-    this.isRecording = false;
-
-    // 1. MediaRecorder durdur
-    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
-      try {
-        this.mediaRecorder.stop();
-      } catch (e) {}
-    }
-
-    // 2. SpeechRecognition durdur
-    if (this.speechRecognition) {
-      try {
-        this.speechRecognition.stop();
-      } catch (e) {}
-    }
-
-    // 3. Mikrofon akışını durdur
-    if (this.audioStream) {
-      this.audioStream.getTracks().forEach(t => t.stop());
-      this.audioStream = null;
-    }
-
-    // 4. Timer ve Görselleştiriciyi temizle
-    if (this.recordingTimerId) {
-      clearInterval(this.recordingTimerId);
-      this.recordingTimerId = null;
-    }
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
-      this.animFrameId = null;
-    }
-    if (this.audioContext && this.audioContext.state !== "closed") {
-      try { this.audioContext.close(); } catch (e) {}
-      this.audioContext = null;
-    }
-
-    // 5. Arayüzü Sıfırla
-    const recordBtn = document.getElementById("btn-toggle-record");
-    const btnText = document.getElementById("record-btn-text");
-    const timerEl = document.getElementById("recording-timer");
-    const visContainer = document.getElementById("visualizer-container");
-
-    if (recordBtn) recordBtn.classList.remove("recording-active");
-    if (btnText) btnText.textContent = "Kaydı Başlat & Konuş";
-    if (timerEl) timerEl.classList.remove("timer-active");
-    if (visContainer) visContainer.style.display = "none";
-
-    // 6. Otomatik Analiz Tetikle
-    const autoAnalyze = document.getElementById("auto-analyze-checkbox")?.checked ?? true;
-    if (autoAnalyze) {
-      setTimeout(() => {
-        this.runAnalysis();
-        this.ui.switchTab("ozet");
-        this.ui.showToast("Ses kaydedildi ve transkript başarıyla analiz edildi!", "success");
-      }, 300);
-    }
-  }
-
-  /**
-   * Ses Çalma Çubuğunu Oluştur
-   */
-  finalizeAudioPlayback() {
-    if (this.audioChunks.length === 0) return;
-
-    const blob = new Blob(this.audioChunks, { type: "audio/webm" });
-    const audioUrl = URL.createObjectURL(blob);
-
-    const playerContainer = document.getElementById("audio-player-container");
-    const audioElement = document.getElementById("recorded-audio");
-    const downloadBtn = document.getElementById("btn-download-audio");
-
-    if (audioElement) {
-      audioElement.src = audioUrl;
-    }
-    if (downloadBtn) {
-      downloadBtn.href = audioUrl;
-    }
-    if (playerContainer) {
-      playerContainer.style.display = "block";
-    }
-  }
-
-  /**
-   * Canlı Ses Dalgası (Canvas Visualizer)
-   */
-  initAudioVisualizer(stream) {
-    const canvas = document.getElementById("audio-visualizer");
-    if (!canvas) return;
-
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-
-    this.audioContext = new AudioCtx();
-    const source = this.audioContext.createMediaStreamSource(stream);
-    this.analyser = this.audioContext.createAnalyser();
-    this.analyser.fftSize = 64;
-    source.connect(this.analyser);
-
-    const bufferLength = this.analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    const ctx = canvas.getContext("2d");
-
-    const draw = () => {
-      if (!this.isRecording) return;
-      this.animFrameId = requestAnimationFrame(draw);
-
-      this.analyser.getByteFrequencyData(dataArray);
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const barWidth = (canvas.width / bufferLength) * 1.8;
-      let x = 0;
-
-      for (let i = 0; i < bufferLength; i++) {
-        const barHeight = (dataArray[i] / 255) * canvas.height;
-        ctx.fillStyle = `rgb(${49 + barHeight * 2}, ${151 + barHeight}, ${149})`;
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-        x += barWidth + 2;
+    btnWhisper?.addEventListener("click", async () => {
+      if (!this.voiceRecorder || !this.voiceRecorder.audioBlob) {
+        this.ui.showToast("Önce bir ses kaydı yapmalısınız.", "warning");
+        return;
       }
-    };
 
-    draw();
+      if (!this.whisperService) {
+        this.whisperService = new OfflineWhisperService({
+          onProgress: (p) => {
+            if (whisperPercent) whisperPercent.textContent = `${p}%`;
+            if (whisperBar) whisperBar.style.width = `${p}%`;
+          },
+          onStatus: (status) => {
+            if (whisperStatus) whisperStatus.textContent = status;
+          }
+        });
+      }
+
+      try {
+        btnWhisper.disabled = true;
+        if (whisperBox) whisperBox.style.display = "block";
+        if (whisperPercent) whisperPercent.textContent = "0%";
+        if (whisperBar) whisperBar.style.width = "0%";
+
+        const text = await this.whisperService.transcribeAudioBlob(this.voiceRecorder.audioBlob);
+
+        if (text && text.trim()) {
+          const textarea = document.getElementById("transcript-input");
+          if (textarea) {
+            const current = textarea.value.trim();
+            const line = `Ç: ${text.trim()}`;
+            textarea.value = (current ? current + "\n" : "") + line;
+            this.updateUtteranceCount();
+            this.saveInputsToStorage();
+          }
+          this.ui.showToast("Whisper transkripsiyonu transkripte eklendi.", "success");
+        } else {
+          this.ui.showToast("Whisper ses kaydında konuşma tespit edemedi.", "info");
+        }
+      } catch (err) {
+        console.error("Whisper hatası:", err);
+        this.ui.showToast("Çevrimdışı transkripsiyon hatası: " + (err.message || err), "danger");
+      } finally {
+        btnWhisper.disabled = false;
+      }
+    });
   }
 
-  /**
-   * Tanınan Cümleyi Transkripte Ekle
-   */
-  appendTranscribedLine(sentence) {
-    const textarea = document.getElementById("transcript-input");
-    if (!textarea) return;
-
-    const speaker = document.getElementById("record-speaker-select")?.value || "Ç";
-
-    // Zaman damgası üret (kayıt süresine göre)
-    let tsPrefix = "";
-    if (this.recordingStartTime) {
-      const elapsedSec = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, "0");
-      const secs = String(elapsedSec % 60).padStart(2, "0");
-      tsPrefix = `[${mins}:${secs}] `;
+  setActiveSpeaker(speaker) {
+    this.activeSpeaker = speaker === "T" ? "T" : "Ç";
+    if (this.dictationService) {
+      this.dictationService.setSpeaker(this.activeSpeaker);
     }
 
-    const currentVal = textarea.value.trim();
-    const newLine = `${tsPrefix}${speaker}: ${sentence}`;
-    textarea.value = currentVal ? `${currentVal}\n${newLine}` : newLine;
+    const btnChild = document.getElementById("btn-speaker-child");
+    const btnTherapist = document.getElementById("btn-speaker-therapist");
 
-    this.updateUtteranceCount();
-    this.saveInputsToStorage();
-
-    // Süre alanını otomatik güncelle (isteğe bağlı)
-    if (this.recordingStartTime) {
-      const elapsedMins = Math.max(1, Math.round(((Date.now() - this.recordingStartTime) / 60000) * 10) / 10);
-      const durationInput = document.getElementById("sample-duration");
-      if (durationInput) durationInput.value = elapsedMins;
+    if (this.activeSpeaker === "Ç") {
+      btnChild?.classList.add("active-child");
+      btnChild?.setAttribute("aria-checked", "true");
+      btnTherapist?.classList.remove("active-therapist");
+      btnTherapist?.setAttribute("aria-checked", "false");
+    } else {
+      btnTherapist?.classList.add("active-therapist");
+      btnTherapist?.setAttribute("aria-checked", "true");
+      btnChild?.classList.remove("active-child");
+      btnChild?.setAttribute("aria-checked", "false");
     }
+
+    this.ui.showToast(`Aktif Konuşmacı: ${this.activeSpeaker === "Ç" ? "Çocuk (Ç:)" : "Terapist (T:)"}`, "info");
+  }
+
+  toggleActiveSpeaker() {
+    const nextSpeaker = this.activeSpeaker === "Ç" ? "T" : "Ç";
+    this.setActiveSpeaker(nextSpeaker);
   }
 
   /**
@@ -668,6 +660,24 @@ class App {
     document.getElementById("client-exact-age").value = "";
     document.getElementById("sample-duration").value = "";
     this.qualitativeEngine.resetState();
+
+    // Ses Kaydedici ve Dikte Temizliği (URL.revokeObjectURL ve bellek temizliği)
+    if (this.voiceRecorder) {
+      this.voiceRecorder.destroy();
+    }
+    if (this.dictationService && this.dictationService.isListening) {
+      this.dictationService.stop();
+    }
+    const playerCard = document.getElementById("audio-player-card");
+    if (playerCard) playerCard.style.display = "none";
+    const player = document.getElementById("audio-player");
+    if (player) player.src = "";
+    const timerBadge = document.getElementById("recording-timer-badge");
+    if (timerBadge) {
+      timerBadge.textContent = "00:00";
+      timerBadge.classList.remove("timer-active");
+    }
+
     this.updateUtteranceCount();
     this.updateContextWarning();
     this.renderEmptyState();

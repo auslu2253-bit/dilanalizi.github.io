@@ -68,6 +68,7 @@ Dil Analizi/
 │   ├── metrics.js            # NTU, NTW, NDW, TTR, MLU, MLUm, WPM, LARSP
 │   ├── reliability.js        # Heilmann 2010 eşikleri ve bağlam uyumu
 │   ├── qualitative.js        # Özdemir 2010 etkileşimli nitel analiz motoru
+│   ├── recorder.js           # Ses kaydı (MediaRecorder), AnalyserNode seviye göstergesi, Web Speech API dikte ve Whisper
 │   └── ui.js                 # DOM ve Chart.js grafik yöneticisi
 ├── data/
 │   ├── roots.js              # ~500 en sık Türkçe çocuk dili kök sözlüğü

@@ -95,6 +95,7 @@
     import { LanguageMetrics } from "./js/metrics.js";
     import { ReliabilityEngine } from "./js/reliability.js";
     import { QualitativeAnalysisEngine } from "./js/qualitative.js";
+    import { VoiceRecorder, LiveDictationService, OfflineWhisperService } from "./js/recorder.js";
 
     const testResults = [];
 
@@ -214,6 +215,32 @@
       const parsed = TranscriptParser.parse(sample);
       const suggestions = QualitativeAnalysisEngine.generateAutoSuggestions(parsed.childUtterances);
       assert(suggestions.length >= 1, "Duygu veya nedensellik önerisi üretilmeli");
+    });
+
+    test("11. Ses Kaydedici Süre ve Formatlama", "VoiceRecorder formatTime ve mimeType mantığı doğrulanmalı", () => {
+      const rec = new VoiceRecorder();
+      assertEqual(rec.formatTime(0), "00:00", "0 saniye '00:00' olmalı");
+      assertEqual(rec.formatTime(75), "01:15", "75 saniye '01:15' olmalı");
+      assertEqual(rec.formatTime(360), "06:00", "360 saniye '06:00' olmalı");
+      assert(typeof VoiceRecorder.getSupportedMimeType === "function", "getSupportedMimeType fonksiyon olmalı");
+    });
+
+    test("12. Canlı Dikte Konuşmacı Yönetimi", "LiveDictationService konuşmacı geçişi ve KVKK kontrolü", () => {
+      const dictation = new LiveDictationService();
+      assertEqual(dictation.activeSpeaker, "Ç", "Varsayılan konuşmacı 'Ç' olmalı");
+      const next = dictation.toggleSpeaker();
+      assertEqual(next, "T", "Geçiş sonrası 'T' olmalı");
+      assertEqual(dictation.activeSpeaker, "T", "Aktif konuşmacı 'T' güncellenmeli");
+      dictation.toggleSpeaker();
+      assertEqual(dictation.activeSpeaker, "Ç", "Tekrar geçişte 'Ç' olmalı");
+      assertEqual(dictation.hasConsent, false, "Başlangıçta KVKK onayı false olmalı");
+    });
+
+    test("13. Çevrimdışı Whisper Servisi Başlatma", "OfflineWhisperService durumu ve arayüzü doğrulanmalı", () => {
+      const whisper = new OfflineWhisperService();
+      assertEqual(whisper.isReady, false, "Model başlangıçta hazır olmamalı");
+      assertEqual(whisper.isLoading, false, "Model başlangıçta yükleniyor olmamalı");
+      assert(typeof whisper.transcribeAudioBlob === "function", "transcribeAudioBlob metodu bulunmalı");
     });
 
     // Testleri UI'a yazdır
