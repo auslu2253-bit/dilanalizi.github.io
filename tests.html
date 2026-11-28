@@ -256,21 +256,6 @@
       assert(!isAllowed("belge.docx"), ".docx reddedilmeli");
     });
 
-    test("15. Ses Dosyası .txt İndirme Yapısı", "Ses kaydı blob verisinin .txt olarak indirilmesi", () => {
-      const code = "D-101";
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const audioTxtFilename = `${code}-ses-kaydi-${dateStr}.txt`;
-      const base64TxtFilename = `${code}-ses-base64-${dateStr}.txt`;
-
-      assert(audioTxtFilename.endsWith(".txt"), "Ses dosyası adı .txt ile bitmeli");
-      assert(base64TxtFilename.endsWith(".txt"), "Base64 dosyası adı .txt ile bitmeli");
-
-      // Örnek ses blob simülasyonu
-      const dummyAudio = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]);
-      const txtBlob = new Blob([dummyAudio], { type: "text/plain" });
-      assertEqual(txtBlob.size, 4, "Ses blob boyutu korunmalı");
-    });
-
     // Testleri UI'a yazdır
     const container = document.getElementById("test-container");
     let passedCount = 0;

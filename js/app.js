@@ -163,7 +163,6 @@ class App {
     });
 
     // Dışa aktarma düğmeleri
-    document.getElementById("btn-export-txt")?.addEventListener("click", () => this.exportTXT());
     document.getElementById("btn-export-json")?.addEventListener("click", () => this.exportJSON());
     document.getElementById("btn-export-csv")?.addEventListener("click", () => this.exportCSV());
     document.getElementById("btn-print")?.addEventListener("click", () => window.print());
@@ -462,11 +461,39 @@ class App {
       });
     }
 
-    // 4. Çevrimdışı Whisper Transkripsiyon Düğmesi
+    // 4. Çevrimdışı Whisper (Transformers.js)
     const btnWhisper = document.getElementById("btn-whisper-transcribe");
+    const whisperBox = document.getElementById("whisper-progress-box");
+    const whisperStatus = document.getElementById("whisper-status-label");
+    const whisperPercent = document.getElementById("whisper-percent-label");
+    const whisperBar = document.getElementById("whisper-progress-bar");
+
     btnWhisper?.addEventListener("click", async () => {
+      if (!this.voiceRecorder || !this.voiceRecorder.audioBlob) {
+        this.ui.showToast("Önce bir ses kaydı yapmalısınız.", "warning");
+        return;
+      }
+
+      if (!this.whisperService) {
+        this.whisperService = new OfflineWhisperService({
+          onProgress: (p) => {
+            if (whisperPercent) whisperPercent.textContent = `${p}%`;
+            if (whisperBar) whisperBar.style.width = `${p}%`;
+          },
+          onStatus: (status) => {
+            if (whisperStatus) whisperStatus.textContent = status;
+          }
+        });
+      }
+
       try {
-        const text = await this.transcribeWithWhisper();
+        btnWhisper.disabled = true;
+        if (whisperBox) whisperBox.style.display = "block";
+        if (whisperPercent) whisperPercent.textContent = "0%";
+        if (whisperBar) whisperBar.style.width = "0%";
+
+        const text = await this.whisperService.transcribeAudioBlob(this.voiceRecorder.audioBlob);
+
         if (text && text.trim()) {
           const textarea = document.getElementById("transcript-input");
           if (textarea) {
@@ -477,69 +504,16 @@ class App {
             this.saveInputsToStorage();
           }
           this.ui.showToast("Whisper transkripsiyonu transkripte eklendi.", "success");
-        } else if (text !== null) {
+        } else {
           this.ui.showToast("Whisper ses kaydında konuşma tespit edemedi.", "info");
         }
       } catch (err) {
         console.error("Whisper hatası:", err);
         this.ui.showToast("Çevrimdışı transkripsiyon hatası: " + (err.message || err), "danger");
+      } finally {
+        btnWhisper.disabled = false;
       }
     });
-
-    // 5. Kaydedilen Ses Dosyasını Doğrudan .txt Olarak İndir
-    const btnDownloadAudioTxt = document.getElementById("btn-download-audio-txt");
-    btnDownloadAudioTxt?.addEventListener("click", () => {
-      this.downloadAudioAsTxt();
-    });
-
-    // 6. Kaydedilen Sesi Base64 Metin (.txt) Olarak İndir
-    const btnDownloadAudioBase64 = document.getElementById("btn-download-audio-base64");
-    btnDownloadAudioBase64?.addEventListener("click", () => {
-      this.downloadAudioAsBase64Txt();
-    });
-  }
-
-  /**
-   * Whisper ile Cihaz İçi Transkripsiyon (Ortak Metot)
-   */
-  async transcribeWithWhisper() {
-    if (!this.voiceRecorder || !this.voiceRecorder.audioBlob) {
-      this.ui.showToast("Önce bir ses kaydı yapmalısınız.", "warning");
-      return null;
-    }
-
-    const whisperBox = document.getElementById("whisper-progress-box");
-    const whisperStatus = document.getElementById("whisper-status-label");
-    const whisperPercent = document.getElementById("whisper-percent-label");
-    const whisperBar = document.getElementById("whisper-progress-bar");
-    const btnWhisper = document.getElementById("btn-whisper-transcribe");
-    const btnDownloadTxt = document.getElementById("btn-download-audio-txt");
-
-    if (!this.whisperService) {
-      this.whisperService = new OfflineWhisperService({
-        onProgress: (p) => {
-          if (whisperPercent) whisperPercent.textContent = `${p}%`;
-          if (whisperBar) whisperBar.style.width = `${p}%`;
-        },
-        onStatus: (status) => {
-          if (whisperStatus) whisperStatus.textContent = status;
-        }
-      });
-    }
-
-    try {
-      if (btnWhisper) btnWhisper.disabled = true;
-      if (btnDownloadTxt) btnDownloadTxt.disabled = true;
-      if (whisperBox) whisperBox.style.display = "block";
-      if (whisperPercent) whisperPercent.textContent = "0%";
-      if (whisperBar) whisperBar.style.width = "0%";
-
-      const text = await this.whisperService.transcribeAudioBlob(this.voiceRecorder.audioBlob);
-      return text;
-    } finally {
-      if (btnWhisper) btnWhisper.disabled = false;
-      if (btnDownloadTxt) btnDownloadTxt.disabled = false;
-    }
   }
 
   setActiveSpeaker(speaker) {
@@ -1532,97 +1506,6 @@ class App {
     a.click();
     URL.revokeObjectURL(url);
     this.ui.showToast("CSV metrik tablosu indirildi.", "success");
-  }
-
-  /**
-   * Kaydedilen Ses Dosyasını (Binary Audio Blob) Doğrudan .txt Uzantısıyla İndir
-   */
-  downloadAudioAsTxt() {
-    if (!this.voiceRecorder || !this.voiceRecorder.audioBlob) {
-      this.ui.showToast("Önce bir ses kaydı yapmalısınız.", "warning");
-      return;
-    }
-
-    const audioBlob = this.voiceRecorder.audioBlob;
-    const clientCode = document.getElementById("client-code")?.value || "Danisan";
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `${clientCode}-ses-kaydi-${dateStr}.txt`;
-
-    // Ses dosyasını .txt MIME türü ve .txt uzantısıyla doğrudan indir
-    const txtBlob = new Blob([audioBlob], { type: "text/plain;charset=x-user-defined" });
-    const url = URL.createObjectURL(txtBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-    this.ui.showToast(`Ses dosyası '${filename}' olarak indirildi.`, "success");
-  }
-
-  /**
-   * Kaydedilen Sesi Base64 Kodlu Metin (.txt) Olarak İndir
-   */
-  downloadAudioAsBase64Txt() {
-    if (!this.voiceRecorder || !this.voiceRecorder.audioBlob) {
-      this.ui.showToast("Önce bir ses kaydı yapmalısınız.", "warning");
-      return;
-    }
-
-    const audioBlob = this.voiceRecorder.audioBlob;
-    const clientCode = document.getElementById("client-code")?.value || "Danisan";
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `${clientCode}-ses-base64-${dateStr}.txt`;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Data = reader.result;
-      const blob = new Blob([base64Data], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-      this.ui.showToast(`Ses Base64 verisi '${filename}' olarak indirildi.`, "success");
-    };
-    reader.readAsDataURL(audioBlob);
-  }
-
-  /**
-   * Transkript Metnini Düz TXT Olarak İndir
-   */
-  exportTXT() {
-    const text = document.getElementById("transcript-input")?.value?.trim() || "";
-    if (!text) {
-      this.ui.showToast("İndirilecek transkript metni bulunamadı.", "warning");
-      return;
-    }
-
-    const code = document.getElementById("client-code")?.value || "Danisan";
-    const dateStr = new Date().toISOString().slice(0, 10);
-    this.downloadTxt(text, `${code}-transkript-${dateStr}.txt`);
-    this.ui.showToast("Transkript .txt dosyası olarak indirildi.", "success");
-  }
-
-  /**
-   * Düz Metin Dosyası İndirme Yardımcısı (Blob tabanlı)
-   */
-  downloadTxt(content, filename) {
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename || `transkript-${new Date().toISOString().slice(0, 10)}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
 
