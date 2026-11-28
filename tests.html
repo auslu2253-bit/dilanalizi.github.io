@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dil Analizi - Birim Testler (Unit Tests)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f7fafc;
+      color: #2d3748;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+    h1 {
+      color: #319795;
+      margin-bottom: 6px;
+    }
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .badge-success { background-color: #c6f6d5; color: #22543d; }
+    .badge-danger { background-color: #fed7d7; color: #742a2a; }
+    .test-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .test-item {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .test-item.passed {
+      border-left: 4px solid #38a169;
+    }
+    .test-item.failed {
+      border-left: 4px solid #e53e3e;
+      background-color: #fff5f5;
+    }
+    .test-name {
+      font-weight: 600;
+    }
+    .test-desc {
+      font-size: 0.82rem;
+      color: #718096;
+      margin-top: 2px;
+    }
+    .test-status {
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .status-passed { color: #38a169; }
+    .status-failed { color: #e53e3e; }
+    a { color: #319795; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <h1>Dil Analizi Modül Testleri</h1>
+  <p>Transkript ayrıştırıcı, morfoloji motoru, metrikler ve güvenilirlik modüllerinin birim testleri.</p>
+  <p><a href="./index.html">← Ana Uygulamaya Dön</a></p>
+
+  <div class="summary-card">
+    <div><strong>Toplam Test:</strong> <span id="total-tests">0</span></div>
+    <div><strong>Başarılı:</strong> <span id="passed-tests" class="badge badge-success">0</span></div>
+    <div><strong>Başarısız:</strong> <span id="failed-tests" class="badge badge-danger">0</span></div>
+  </div>
+
+  <div id="test-container" class="test-list">
+    <!-- Test sonuçları buraya eklenecek -->
+  </div>
+
+  <script type="module">
+    import { TranscriptParser } from "./js/parser.js";
+    import { TurkishMorphology } from "./js/morphology.js";
+    import { LanguageMetrics } from "./js/metrics.js";
+    import { ReliabilityEngine } from "./js/reliability.js";
+    import { QualitativeAnalysisEngine } from "./js/qualitative.js";
+
+    const testResults = [];
+
+    function test(name, description, fn) {
+      try {
+        fn();
+        testResults.push({ name, description, passed: true, error: null });
+      } catch (err) {
+        testResults.push({ name, description, passed: false, error: err.message });
+      }
+    }
+
+    function assert(condition, message) {
+      if (!condition) {
+        throw new Error(message || "Assertion failed");
+      }
+    }
+
+    function assertEqual(actual, expected, message) {
+      if (actual !== expected) {
+        throw new Error(`${message || "Eşitlik hatası"}: Beklenen [${expected}], Gelen [${actual}]`);
+      }
+    }
+
+    // --- TESTLER ---
+
+    test("1. Parser - Ç: ve T: Ayrıştırma", "Çocuk ve terapist satırlarını doğru ayırmalı", () => {
+      const sample = `[00:03] T: Merhaba çocuk!\n[00:07] Ç: Merhaba ormana gittim.`;
+      const res = TranscriptParser.parse(sample);
+      assert(res.isValid, "Geçerli olmalı");
+      assertEqual(res.childUtterances.length, 1, "1 çocuk ifadesi olmalı");
+      assertEqual(res.therapistUtterances.length, 1, "1 terapist ifadesi olmalı");
+      assertEqual(res.allTurns.length, 2, "2 konuşma sırası olmalı");
+    });
+
+    test("2. Parser - Kodlama Sözdizimi", "Labirent, hata ve eksiklikleri tespit etmeli", () => {
+      const sample = `Ç: (ııı) çocuk [Hata] kızıyo ve [E:topu] buldu XXX.`;
+      const res = TranscriptParser.parse(sample);
+      const utt = res.childUtterances[0];
+      assertEqual(utt.mazes.length, 1, "1 labirent olmalı");
+      assertEqual(utt.errors.length, 1, "1 hata kodu olmalı");
+      assertEqual(utt.wordOmissions.length, 1, "1 sözcük eksikliği olmalı");
+      assertEqual(utt.unintelligibleTokens.length, 1, "1 XXX anlaşılmaz sözcük olmalı");
+      assert(res.hasExplicitCoding.mazes, "Labirent kodlu olarak işaretlenmeli");
+      assert(res.hasExplicitCoding.errors, "Hata kodlu olarak işaretlenmeli");
+    });
+
+    test("3. Morfoloji - Yalın Kök ve Ek Ayrıştırma", "Orman-lar-da sözcüğünü kök ve 2 ek olarak çözmeli", () => {
+      const res = TurkishMorphology.parseWord("ormanlarda");
+      assertEqual(res.root, "orman", "Kök 'orman' olmalı");
+      assertEqual(res.morphemeCount, 3, "Kök + 2 ek = 3 morfem olmalı");
+      assert(res.suffixes.some(s => s.category === "plural"), "Çoğul eki bulunmalı");
+      assert(res.suffixes.some(s => s.category === "case"), "Durum eki bulunmalı");
+    });
+
+    test("4. Morfoloji - Ünsüz Yumuşaması", "Köpeği sözcüğünden köpek kökünü bulmalı", () => {
+      const res = TurkishMorphology.parseWord("köpeği");
+      assertEqual(res.root, "köpek", "Kök 'köpek' olmalı");
+      assert(res.suffixes.length >= 1, "En az 1 ek olmalı");
+    });
+
+    test("5. Metrikler - Temel Sayımlar (NTU, NTW, NDW, TTR)", "Sözcük ve çeşitlilik metriklerini doğru hesaplamalı", () => {
+      const sample = `Ç: çocuk topu attı.\nÇ: çocuk eve gitti.`;
+      const parsed = TranscriptParser.parse(sample);
+      const morph = TurkishMorphology.analyzeUtterances(parsed.childUtterances);
+      const metrics = LanguageMetrics.computeAll(parsed, morph, { duration: 1 });
+
+      assertEqual(metrics.ntu, 2, "NTU 2 olmalı");
+      assertEqual(metrics.ntw, 6, "NTW 6 olmalı");
+      assert(metrics.ndw >= 5, "NDW en az 5 olmalı");
+      assert(metrics.mluWords === 3, "MLU 3.0 olmalı");
+      assert(metrics.wpm === 6, "1 dakikada WPM 6 olmalı");
+    });
+
+    test("6. Güvenilirlik - Örnek Yeterliliği Eşiği", "≥50 ifade yüksek, <50 ifade uyarı üretmeli", () => {
+      const ade1 = ReliabilityEngine.evaluateSampleAdequacy(54);
+      assert(ade1.isAdequate, "54 ifade yeterli sayılmalı");
+      assertEqual(ade1.level, "Yüksek", "Düzey yüksek olmalı");
+
+      const ade2 = ReliabilityEngine.evaluateSampleAdequacy(25);
+      assert(!ade2.isAdequate, "25 ifade yetersiz sayılmalı");
+    });
+
+    test("7. Brown Gelişim Aşamaları", "MLUm değerine göre aşama eşleşmesi doğru olmalı", () => {
+      const stage1 = LanguageMetrics.estimateBrownStage(1.5);
+      assertEqual(stage1.stage, "Aşama I", "1.5 MLUm Aşama I olmalı");
+
+      const stage3 = LanguageMetrics.estimateBrownStage(2.8);
+      assertEqual(stage3.stage, "Aşama III", "2.8 MLUm Aşama III olmalı");
+
+      const stage5 = LanguageMetrics.estimateBrownStage(4.8);
+      assertEqual(stage5.stage, "Aşama V+", "4.8 MLUm Aşama V+ olmalı");
+    });
+
+    test("8. LARSP Yapısal Dağılım", "Tek sözcük ve karmaşık cümleleri ayırmalı", () => {
+      const sample = `Ç: ev.\nÇ: çocuk gitti çünkü yağmur yağdı.`;
+      const parsed = TranscriptParser.parse(sample);
+      const larsp = LanguageMetrics.computeLarspDistribution(parsed.childUtterances);
+
+      assertEqual(larsp.singleWord.count, 1, "1 tek sözcüklü ifade olmalı");
+      assertEqual(larsp.complexClause.count, 1, "1 karmaşık ifade olmalı");
+    });
+
+    test("9. Güvenilirlik Tablosu - Heilmann 2010 Alfa Değerleri", "3 dakikalık örnekte NTU α=0.88 olmalı", () => {
+      const rel = ReliabilityEngine.getReliabilityTable(3);
+      const ntuRow = rel.rows.find(r => r.code === "ntu");
+      assert(ntuRow !== undefined, "NTU satırı bulunmalı");
+      assertEqual(ntuRow.alpha, 0.88, "3 dk NTU alfa 0.88 olmalı");
+    });
+
+    test("10. Nitel Analiz Modülü", "Ön-kod önerileri ve stratejiler hazır olmalı", () => {
+      const strategies = QualitativeAnalysisEngine.getStrategies();
+      assert(strategies.constant_comparative !== undefined, "Sabit karşılaştırma stratejisi tanımlı olmalı");
+      assert(strategies.content_analysis !== undefined, "İçerik analizi stratejisi tanımlı olmalı");
+
+      const sample = `Ç: çocuk çok korktu çünkü ayı geldi.`;
+      const parsed = TranscriptParser.parse(sample);
+      const suggestions = QualitativeAnalysisEngine.generateAutoSuggestions(parsed.childUtterances);
+      assert(suggestions.length >= 1, "Duygu veya nedensellik önerisi üretilmeli");
+    });
+
+    // Testleri UI'a yazdır
+    const container = document.getElementById("test-container");
+    let passedCount = 0;
+    let failedCount = 0;
+
+    testResults.forEach(r => {
+      if (r.passed) passedCount++;
+      else failedCount++;
+
+      const el = document.createElement("div");
+      el.className = `test-item ${r.passed ? "passed" : "failed"}`;
+      el.innerHTML = `
+        <div>
+          <div class="test-name">${r.name}</div>
+          <div class="test-desc">${r.description}</div>
+          ${r.error ? `<div style="color: #e53e3e; font-size: 0.8rem; margin-top: 4px;">Hata: ${r.error}</div>` : ""}
+        </div>
+        <div class="test-status ${r.passed ? "status-passed" : "status-failed"}">
+          ${r.passed ? "✓ GEÇTİ" : "✗ KALDI"}
+        </div>
+      `;
+      container.appendChild(el);
+    });
+
+    document.getElementById("total-tests").textContent = testResults.length;
+    document.getElementById("passed-tests").textContent = passedCount;
+    document.getElementById("failed-tests").textContent = failedCount;
+  </script>
+</body>
+</html>

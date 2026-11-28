@@ -1,0 +1,19 @@
+{
+  "name": "dil-analizi",
+  "version": "1.0.0",
+  "description": "Klinik Çocuk Dil Örneği Analiz Sistemi (LSA)",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "dil-analizi",
+    "lsa",
+    "dil-örneği-analizi",
+    "klinik-karar-destek",
+    "türkçe-morfoloji"
+  ],
+  "author": "",
+  "license": "MIT"
+}
